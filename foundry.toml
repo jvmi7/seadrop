@@ -22,5 +22,9 @@ test = 'src'
 [rpc_endpoints]
 goerli = '${GOERLI_RPC_URL}'
 mainnet = '${ETHEREUM_RPC_URL}'
+optimism_sepolia = "${OPTIMISM_SEPOLIA_RPC_URL}"
+optimism = "${OPTIMISM_RPC_URL}"
+base_sepolia = "${BASE_SEPOLIA_RPC_URL}"
 
 # See more config options https://github.com/foundry-rs/foundry/tree/master/config
+
