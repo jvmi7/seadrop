@@ -8,4 +8,5 @@ struct TokenMetadata {
     string animationUrl;
     uint8[7] values;
     uint8 palette;
+    bool isLocked;
 }

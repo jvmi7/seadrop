@@ -6,22 +6,59 @@ import { Strings } from "openzeppelin-contracts/utils/Strings.sol";
 import { SVGGenerator } from "./SVGGenerator.sol";
 import { TokenMetadata } from "./SeaDropTypes.sol";
 
+/// @title NFT Metadata Renderer
+/// @notice Handles the generation and management of NFT metadata
 contract MetadataRenderer {
     using Strings for uint256;
 
-    bytes32[7] private _randomSeeds;
-    uint256 private _lastUpdateBlock;
-    uint256 private constant DAY_IN_SECONDS = 1;
+    // ============ Constants ============
 
+    // Time constants
+    uint256 private constant _DAY_IN_SECONDS = 1;
+
+    // Value generation constants
+    uint256 private constant _MAX_RANDOM_VALUE = 100;
+    uint256 private constant _SEED_ARRAY_SIZE = 7;
+    uint256 private constant _VALUES_ARRAY_SIZE = 7;
+
+    // Palette distribution constants
+    uint256 private constant _PALETTE_0_THRESHOLD = 8;
+    uint256 private constant _PALETTE_1_THRESHOLD = 12;
+    uint256 private constant _PALETTE_2_THRESHOLD = 14;
+    uint256 private constant _PALETTE_3_THRESHOLD = 15;
+    uint256 private constant _TOTAL_DISTRIBUTION_RANGE = 16;
+
+    // Metadata constants
+    string private constant _BASE_NAME = "Untitled";
+    string private constant _BASE_DESCRIPTION = "A new NFT";
+    string private constant _PALETTE_PREFIX = "Palette ";
+
+    // ============ Storage ============
+
+    // State variables
+    bytes32[_SEED_ARRAY_SIZE] private _randomSeeds;
+    uint256 private _lastUpdateBlock;
+    address public immutable nftContract;
+
+    // Mappings
     mapping(uint256 => uint8) private _tokenPalettes;
     mapping(uint256 => bool) private _tokenLocked;
-    mapping(uint256 => uint8[7]) private _lockedValues;
+    mapping(uint256 => uint8[_VALUES_ARRAY_SIZE]) private _lockedValues;
 
-    address public immutable nftContract;
+    // ============ Events ============
 
     event MetadataUpdated(uint256 indexed tokenId);
     event TokenLocked(uint256 indexed tokenId);
-    event TokenUnlocked(uint256 indexed tokenId);
+
+    // ============ Errors ============
+
+    error OnlyNFTContract();
+    error TooEarlyToUpdate();
+    error InvalidBlockHash();
+    error TokenAlreadyLocked();
+    error ValuesNotReadyForLocking(string message);
+
+    // ============ Constructor & Modifier ============
 
     constructor(address _nftContract) {
         nftContract = _nftContract;
@@ -29,48 +66,44 @@ contract MetadataRenderer {
     }
 
     modifier onlyNFTContract() {
-        require(msg.sender == nftContract, "Only NFT contract");
+        if (msg.sender != nftContract) revert OnlyNFTContract();
         _;
     }
 
-    function setInitialMetadata(uint256 tokenId) external onlyNFTContract {
-        uint8 palette;
-        uint256 mod16 = tokenId % 16;
-        
-        if (mod16 < 8) palette = 0;
-        else if (mod16 < 12) palette = 1;
-        else if (mod16 < 14) palette = 2;
-        else if (mod16 < 15) palette = 3;
+    // ============ Public Functions ============
 
-        _tokenPalettes[tokenId] = palette;
+    function setInitialMetadata(uint256 tokenId) external onlyNFTContract {
+        _tokenPalettes[tokenId] = _calculateInitialPalette(tokenId);
     }
 
     function updateDailySeeds() external {
-        require(block.timestamp >= _lastUpdateBlock + DAY_IN_SECONDS, "Too early to update");
+        if (block.timestamp < _lastUpdateBlock + _DAY_IN_SECONDS) revert TooEarlyToUpdate();
         
-        // Get new random hash
-        require(block.number > 0, "No previous blocks");
-        bytes32 previousBlockHash = blockhash(block.number - 1);
-        require(previousBlockHash != bytes32(0), "Block hash not available");
-        
-        // Try to find first zero seed
-        for (uint256 i = 0; i < 7; i++) {
-            if (_randomSeeds[i] == 0) {
-                _randomSeeds[i] = previousBlockHash;
-                _lastUpdateBlock = block.timestamp;
-                return;
-            }
-        }
-        
-        // If array is full, shift left and add new hash at end
-        for (uint256 i = 0; i < 6; i++) {
-            _randomSeeds[i] = _randomSeeds[i + 1];
-        }
-        _randomSeeds[6] = previousBlockHash;
+        bytes32 newSeed = _getNewRandomSeed();
+        _updateRandomSeeds(newSeed);
         _lastUpdateBlock = block.timestamp;
     }
 
-// For testing purposes only
+    function generateTokenURI(uint256 tokenId) external view returns (string memory) {        
+        TokenMetadata memory metadata = _createTokenMetadata(tokenId);
+        return _generateFullTokenURI(metadata);
+    }
+
+    function lockTokenValues(uint256 tokenId) external onlyNFTContract {
+        if (_tokenLocked[tokenId]) revert TokenAlreadyLocked();
+        
+        uint8[_VALUES_ARRAY_SIZE] memory currentValues = generateValuesFromSeeds(tokenId);
+        if (!_areAllValuesNonZero(currentValues)) {
+            revert ValuesNotReadyForLocking("Token values are not yet complete. Please wait for daily updates to generate all values before locking.");
+        }
+        
+        _tokenLocked[tokenId] = true;
+        _lockedValues[tokenId] = currentValues;
+        
+        emit TokenLocked(tokenId);
+    }
+
+    // For testing purposes only
     function fastForwardDays() external {
         _randomSeeds[0] = 0x0000000000000000000000000000000000000000000000000000000000000001;
         _randomSeeds[1] = 0x0000000000000000000000000000000000000000000000000000000000000002;
@@ -83,181 +116,244 @@ contract MetadataRenderer {
         _lastUpdateBlock = block.timestamp;
     }
 
-    function generateTokenURI(uint256 tokenId) 
-        external 
-        view 
-        returns (string memory) 
-    {        
-        uint8[7] memory values = generateValuesFromSeeds(tokenId);
-        TokenMetadata memory metadata = TokenMetadata({
-            name: "Untitled",
-            description: "A new NFT",
-            image: "",
-            animationUrl: "",
-            values: values,
-            palette: _tokenPalettes[tokenId]
-        });
-        
-        return _generateFullTokenURI(tokenId, metadata);
-    }
+    // ============ View Functions ============
 
     function generateValuesFromSeeds(uint256 tokenId) 
         public 
         view 
-        returns (uint8[7] memory) 
+        returns (uint8[_VALUES_ARRAY_SIZE] memory) 
     {
-        if (_tokenLocked[tokenId]) {
-            return _lockedValues[tokenId];
+        return _tokenLocked[tokenId] ? _lockedValues[tokenId] : _generateNewValues(tokenId);
+    }
+
+    function getRandomSeeds() external view returns (bytes32[_SEED_ARRAY_SIZE] memory) {
+        return _randomSeeds;
+    }
+
+    // ============ Internal Token Generation Functions ============
+
+    function _calculateInitialPalette(uint256 tokenId) private pure returns (uint8) {
+        uint256 mod16 = tokenId % _TOTAL_DISTRIBUTION_RANGE;
+        
+        if (mod16 < _PALETTE_0_THRESHOLD) return 0;
+        if (mod16 < _PALETTE_1_THRESHOLD) return 1;
+        if (mod16 < _PALETTE_2_THRESHOLD) return 2;
+        if (mod16 < _PALETTE_3_THRESHOLD) return 3;
+        return 0;
+    }
+
+    function _getNewRandomSeed() private view returns (bytes32) {
+        if (block.number == 0) revert InvalidBlockHash();
+        
+        bytes32 previousBlockHash = blockhash(block.number - 1);
+        if (previousBlockHash == bytes32(0)) revert InvalidBlockHash();
+        
+        return previousBlockHash;
+    }
+
+    function _updateRandomSeeds(bytes32 newSeed) private {
+        uint256 emptySlot = _findEmptySlot();
+        if (emptySlot < _SEED_ARRAY_SIZE) {
+            _randomSeeds[emptySlot] = newSeed;
+        } else {
+            _shiftAndUpdateSeeds(newSeed);
         }
+    }
 
-        uint8[7] memory values = [0, 0, 0, 0, 0, 0, 0];
+    function _findEmptySlot() private view returns (uint256) {
+        for (uint256 i = 0; i < _SEED_ARRAY_SIZE; i++) {
+            if (_randomSeeds[i] == 0) return i;
+        }
+        return _SEED_ARRAY_SIZE;
+    }
 
-        for (uint256 i = 0; i < 7; i++) {
+    function _shiftAndUpdateSeeds(bytes32 newSeed) private {
+        for (uint256 i = 0; i < _SEED_ARRAY_SIZE - 1; i++) {
+            _randomSeeds[i] = _randomSeeds[i + 1];
+        }
+        _randomSeeds[_SEED_ARRAY_SIZE - 1] = newSeed;
+    }
+
+    // ============ Internal Value Generation Functions ============
+
+    function _generateNewValues(uint256 tokenId) 
+        private 
+        view 
+        returns (uint8[_VALUES_ARRAY_SIZE] memory) 
+    {
+        uint8[_VALUES_ARRAY_SIZE] memory values;
+        
+        for (uint256 i = 0; i < _VALUES_ARRAY_SIZE; i++) {
             if (_randomSeeds[i] != 0) {
-                bytes32 combinedSeed = keccak256(abi.encodePacked(_randomSeeds[i], tokenId));
-                uint256 randomValue = (uint256(combinedSeed) % 100) + 1;
-                values[i] = uint8(randomValue);
+                values[i] = _generateSingleValue(_randomSeeds[i], tokenId);
             }
         }
         return values;
     }
 
-    function getRandomSeeds() external view returns (bytes32[7] memory) {
-        return _randomSeeds;
-    }
-
-    function _generateFullTokenURI(uint256 tokenId, TokenMetadata memory metadata)
-        internal
-        view
-        returns (string memory)
+    function _generateSingleValue(bytes32 seed, uint256 tokenId) 
+        private 
+        pure 
+        returns (uint8) 
     {
-        string memory imageUri = _generateImageURI(metadata.values, metadata.palette);
-        string memory jsonData = _generateJsonData(tokenId, metadata, imageUri);
-        
-        return string(
-            abi.encodePacked(
-                "data:application/json;base64,",
-                Base64.encode(bytes(jsonData))
-            )
-        );
+        bytes32 combinedSeed = keccak256(abi.encodePacked(seed, tokenId));
+        return uint8((uint256(combinedSeed) % _MAX_RANDOM_VALUE) + 1);
     }
 
-    function _generateImageURI(uint8[7] memory values, uint8 palette)
-        internal
-        pure
-        returns (string memory)
+    function _areAllValuesNonZero(uint8[_VALUES_ARRAY_SIZE] memory values) 
+        private 
+        pure 
+        returns (bool) 
     {
-        string memory svgBase64 = SVGGenerator.generateSVG(values, palette);
-        return string(
-            abi.encodePacked('data:image/svg+xml;base64,', svgBase64)
-        );
+        for (uint256 i = 0; i < _VALUES_ARRAY_SIZE; i++) {
+            if (values[i] == 0) return false;
+        }
+        return true;
     }
 
-    function _generateJsonData(
-        uint256 tokenId,
-        TokenMetadata memory metadata,
-        string memory imageUri
-    ) internal view returns (string memory) {
-        return string(
-            abi.encodePacked(
-                '{',
-                _generateBasicFields(tokenId, metadata, imageUri),
-                _generateAttributesSection(metadata.values, metadata.palette, _tokenLocked[tokenId]),
-                '}'
-            )
-        );
-    }
-
-    function _generateBasicFields(
-        uint256 tokenId,
-        TokenMetadata memory metadata,
-        string memory imageUri
-    ) internal pure returns (string memory) {
-        return string(
-            abi.encodePacked(
-                '"name": "#', tokenId.toString(), '",',
-                '"description": "', metadata.description, '",',
-                '"image": "', imageUri, '",',
-                '"animation_url": "', metadata.animationUrl, '",'
-            )
-        );
-    }
-
-    function _generateAttributesSection(uint8[7] memory values, uint8 palette, bool isLocked)
-        internal
-        pure
-        returns (string memory)
+    function _getLastNonZeroValue(uint8[_VALUES_ARRAY_SIZE] memory values) 
+        private 
+        pure 
+        returns (uint8) 
     {
+        uint8 lastValue = 0;
+        for (uint256 i = 0; i < _VALUES_ARRAY_SIZE; i++) {
+            if (values[i] != 0) {
+                lastValue = values[i];
+            }
+        }
+        return lastValue;
+    }
+
+    // ============ Internal Metadata Generation Functions ============
+
+    function _createTokenMetadata(uint256 tokenId) 
+        private 
+        view 
+        returns (TokenMetadata memory) 
+    {
+        return TokenMetadata({
+            name: _generateName(tokenId),
+            description: _BASE_DESCRIPTION,
+            image: _generateImageURI(tokenId),
+            animationUrl: _generateAnimationURI(),
+            values: generateValuesFromSeeds(tokenId),
+            palette: _tokenPalettes[tokenId],
+            isLocked: _tokenLocked[tokenId]
+        });
+    }
+
+    function _generateName(uint256 tokenId) private pure returns (string memory) {
+        return string(abi.encodePacked(_BASE_NAME, " #", tokenId.toString()));
+    }
+
+    function _generateImageURI(uint256 tokenId) private view returns (string memory) {
         return string(
             abi.encodePacked(
-                '"attributes": [',
-                '{"trait_type": "values", "value": "', _generateValueString(values), '"},',
-                '{"trait_type": "palette", "value": "', _getPaletteName(palette), '"},',
-                '{"trait_type": "locked", "value": "', isLocked ? 'true' : 'false', '"},',
-                '{"display_type": "number", "trait_type": "current_value", "value": ', 
-                uint256(_getCurrentValue(values)).toString(), 
-                ', "max_value": 100, "min_value": 0}',
-                ']'
+                "data:image/svg+xml;base64,",
+                SVGGenerator.generateSVG(
+                    generateValuesFromSeeds(tokenId),
+                    _tokenPalettes[tokenId]
+                )
             )
         );
     }
 
-    function _generateValueString(uint8[7] memory values) 
-        internal 
+    function _generateAnimationURI() private pure returns (string memory) {
+        // Animation URI generation logic here
+        return "";
+    }
+
+    function _generateFullTokenURI(TokenMetadata memory metadata) 
+        private 
         pure 
         returns (string memory) 
     {
         return string(
             abi.encodePacked(
-                uint256(values[0]).toString(), ',',
-                uint256(values[1]).toString(), ',',
-                uint256(values[2]).toString(), ',',
-                uint256(values[3]).toString(), ',',
-                uint256(values[4]).toString(), ',',
-                uint256(values[5]).toString(), ',',
-                uint256(values[6]).toString()
+                "data:application/json;base64,",
+                Base64.encode(
+                    bytes(
+                        _generateJSONMetadata(metadata)
+                    )
+                )
             )
         );
     }
 
-    function _getPaletteName(uint8 palette) internal pure returns (string memory) {
-        if (palette == 0) return "classic";
-        if (palette == 1) return "ice";
-        if (palette == 2) return "fire";
-        if (palette == 3) return "punch";
-        if (palette == 4) return "chromatic";
-        if (palette == 5) return "pastel";
-        return "greyscale";
-    }
-
-    function _getCurrentValue(uint8[7] memory values) 
-        internal 
+    function _generateJSONMetadata(TokenMetadata memory metadata) 
+        private 
         pure 
-        returns (uint8) 
+        returns (string memory) 
     {
-        // Start from index 6 and iterate until index 0
-        for (int256 i = 6; i >= 0; i--) {
-            if (values[uint256(i)] > 0) {
-                return values[uint256(i)];
-            }
-        }
-        return 0; // Return 0 if all values are zero
+        return string(
+            abi.encodePacked(
+                '{',
+                _generateBasicProperties(metadata),
+                _generateAttributesSection(metadata),
+                '}'
+            )
+        );
     }
 
-    function lockTokenValues(uint256 tokenId) external onlyNFTContract {
-        require(!_tokenLocked[tokenId], "Token already locked");
-        
-        // Get current values
-        uint8[7] memory currentValues = generateValuesFromSeeds(tokenId);
-        
-        // Check that all values are non-zero
-        for (uint256 i = 0; i < 7; i++) {
-            require(currentValues[i] > 0, "Cannot lock: some values are zero");
+    function _generateBasicProperties(TokenMetadata memory metadata) 
+        private 
+        pure 
+        returns (string memory) 
+    {
+        return string(
+            abi.encodePacked(
+                '"name":"', metadata.name, '",',
+                '"description":"', metadata.description, '",',
+                '"image":"', metadata.image, '",',
+                '"animation_url":"', metadata.animationUrl, '",'
+            )
+        );
+    }
+
+    function _generateAttributesSection(TokenMetadata memory metadata) 
+        private 
+        pure 
+        returns (string memory) 
+    {
+        return string(
+            abi.encodePacked(
+                '"attributes":[',
+                _generateAttributes(metadata),
+                ']'
+            )
+        );
+    }
+
+    function _generateAttributes(TokenMetadata memory metadata) 
+        private 
+        pure 
+        returns (string memory) 
+    {
+        return string(
+            abi.encodePacked(
+                '{"trait_type":"values","value":"', _generateValueString(metadata.values), '"},',
+                '{"trait_type":"palette","value":"', _getPaletteName(metadata.palette), '"},',
+                '{"trait_type":"isLocked","value":"', metadata.isLocked ? 'yes' : 'no', '"},',
+                '{"trait_type":"value","value":"', uint256(_getLastNonZeroValue(metadata.values)).toString(), '"}'
+            )
+        );
+    }
+
+    function _generateValueString(uint8[_VALUES_ARRAY_SIZE] memory values) 
+        private 
+        pure 
+        returns (string memory) 
+    {
+        string memory result = "";
+        for (uint256 i = 0; i < _VALUES_ARRAY_SIZE; i++) {
+            if (i > 0) result = string(abi.encodePacked(result, ","));
+            result = string(abi.encodePacked(result, uint256(values[i]).toString()));
         }
-        
-        _tokenLocked[tokenId] = true;
-        _lockedValues[tokenId] = currentValues;
-        
-        emit TokenLocked(tokenId);
+        return result;
+    }
+
+    function _getPaletteName(uint8 palette) private pure returns (string memory) {
+        return string(abi.encodePacked(_PALETTE_PREFIX, uint256(palette).toString()));
     }
 }
