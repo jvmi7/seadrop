@@ -17,27 +17,6 @@ contract ERC721SeaDropCustom is ERC721SeaDrop {
         metadataRenderer = MetadataRenderer(_renderer);
     }
 
-    function setTokenMetadata(
-        uint256 tokenId,
-        string memory name,
-        string memory description,
-        string memory image,
-        string memory animationUrl,
-        uint8[7] memory values,
-        uint8 palette
-    ) external onlyOwner {
-        require(_exists(tokenId), "Token does not exist");
-        metadataRenderer.setTokenMetadata(
-            tokenId,
-            name,
-            description,
-            image,
-            animationUrl,
-            values,
-            palette
-        );
-    }
-
     function tokenURI(uint256 tokenId)
         public
         view

@@ -4,26 +4,24 @@ pragma solidity 0.8.17;
 import { Base64 } from "openzeppelin-contracts/utils/Base64.sol";
 import { Strings } from "openzeppelin-contracts/utils/Strings.sol";
 import { SVGGenerator } from "./SVGGenerator.sol";
+import { TokenMetadata } from "./SeaDropTypes.sol";
 
 contract MetadataRenderer {
     using Strings for uint256;
 
-    struct TokenMetadata {
-        string name;
-        string description;
-        string image;
-        string animationUrl;
-        uint8[7] values;
-        uint8 palette;
-    }
+    bytes32[7] private _randomSeeds;
+    uint256 private _lastUpdateBlock;
+    uint256 private constant DAY_IN_SECONDS = 1;
 
-    mapping(uint256 => TokenMetadata) private _tokenMetadata;
+    mapping(uint256 => uint8) private _tokenPalettes;
+
     address public immutable nftContract;
 
     event MetadataUpdated(uint256 indexed tokenId);
 
     constructor(address _nftContract) {
         nftContract = _nftContract;
+        _lastUpdateBlock = block.timestamp;
     }
 
     modifier onlyNFTContract() {
@@ -31,59 +29,80 @@ contract MetadataRenderer {
         _;
     }
 
-    function setTokenMetadata(
-        uint256 tokenId,
-        string memory name,
-        string memory description,
-        string memory image,
-        string memory animationUrl,
-        uint8[7] memory values,
-        uint8 palette
-    ) public onlyNFTContract {
-        for (uint256 i = 0; i < 7; i++) {
-            require(values[i] <= 100, "Values must be between 0 and 100");
-        }
-
-        _tokenMetadata[tokenId] = TokenMetadata({
-            name: name,
-            description: description,
-            image: image,
-            animationUrl: animationUrl,
-            values: values,
-            palette: palette
-        });
-
-        emit MetadataUpdated(tokenId);
-    }
-
     function setInitialMetadata(uint256 tokenId) external onlyNFTContract {
-        uint8[7] memory defaultValues = [1, 2, 3, 0, 0, 0, 0];
         uint8 palette;
         uint256 mod16 = tokenId % 16;
         
-        if (mod16 < 8) palette = 0;      // 8/15 chance = 53.33%
-        else if (mod16 < 12) palette = 1; // 4/15 chance = 26.67%
-        else if (mod16 < 14) palette = 2; // 2/15 chance = 13.33%
-        else if (mod16 < 15) palette = 3; // 1/15 chance = 6.67%
+        if (mod16 < 8) palette = 0;
+        else if (mod16 < 12) palette = 1;
+        else if (mod16 < 14) palette = 2;
+        else if (mod16 < 15) palette = 3;
 
-        setTokenMetadata(
-            tokenId,
-            "Untitled",
-            "A new NFT",
-            "",
-            "",
-            defaultValues,
-            palette
-        );
+        _tokenPalettes[tokenId] = palette;
+    }
+
+    function updateDailySeeds() external {
+        require(block.timestamp >= _lastUpdateBlock + DAY_IN_SECONDS, "Too early to update");
+        
+        // Get new random hash
+        require(block.number > 0, "No previous blocks");
+        bytes32 previousBlockHash = blockhash(block.number - 1);
+        require(previousBlockHash != bytes32(0), "Block hash not available");
+        
+        // Try to find first zero seed
+        for (uint256 i = 0; i < 7; i++) {
+            if (_randomSeeds[i] == 0) {
+                _randomSeeds[i] = previousBlockHash;
+                _lastUpdateBlock = block.timestamp;
+                return;
+            }
+        }
+        
+        // If array is full, shift left and add new hash at end
+        for (uint256 i = 0; i < 6; i++) {
+            _randomSeeds[i] = _randomSeeds[i + 1];
+        }
+        _randomSeeds[6] = previousBlockHash;
+        _lastUpdateBlock = block.timestamp;
     }
 
     function generateTokenURI(uint256 tokenId) 
         external 
         view 
         returns (string memory) 
-    {
-        TokenMetadata memory metadata = _tokenMetadata[tokenId];
+    {        
+        uint8[7] memory values = generateValuesFromSeeds(tokenId);
+        TokenMetadata memory metadata = TokenMetadata({
+            name: "Untitled",
+            description: "A new NFT",
+            image: "",
+            animationUrl: "",
+            values: values,
+            palette: _tokenPalettes[tokenId]
+        });
+        
         return _generateFullTokenURI(tokenId, metadata);
+    }
+
+    function generateValuesFromSeeds(uint256 tokenId) 
+        public 
+        view 
+        returns (uint8[7] memory) 
+    {
+        uint8[7] memory values = [0, 0, 0, 0, 0, 0, 0];
+
+        for (uint256 i = 0; i < 7; i++) {
+            if (_randomSeeds[i] != 0) {
+                bytes32 combinedSeed = keccak256(abi.encodePacked(_randomSeeds[i], tokenId, i));
+                uint256 randomValue = uint256(combinedSeed) % 101;
+                values[i] = uint8(randomValue);
+            }
+        }
+        return values;
+    }
+
+    function getRandomSeeds() external view returns (bytes32[7] memory) {
+        return _randomSeeds;
     }
 
     function _generateFullTokenURI(uint256 tokenId, TokenMetadata memory metadata)
@@ -194,9 +213,10 @@ contract MetadataRenderer {
         pure 
         returns (uint8) 
     {
-        for (uint256 i = 6; i >= 0; i--) {
-            if (values[i] > 0) {
-                return values[i];
+        // Start from index 6 and iterate until index 0
+        for (int256 i = 6; i >= 0; i--) {
+            if (values[uint256(i)] > 0) {
+                return values[uint256(i)];
             }
         }
         return 0; // Return 0 if all values are zero
