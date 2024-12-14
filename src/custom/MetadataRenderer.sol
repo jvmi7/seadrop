@@ -39,7 +39,7 @@ contract MetadataRenderer {
         string memory animationUrl,
         uint8[7] memory values,
         uint8 palette
-    ) external onlyNFTContract {
+    ) public onlyNFTContract {
         for (uint256 i = 0; i < 7; i++) {
             require(values[i] <= 100, "Values must be between 0 and 100");
         }
@@ -54,6 +54,27 @@ contract MetadataRenderer {
         });
 
         emit MetadataUpdated(tokenId);
+    }
+
+    function setInitialMetadata(uint256 tokenId) external onlyNFTContract {
+        uint8[7] memory defaultValues = [15, 30, 45, 60, 75, 90, 100];
+        uint8 palette;
+        uint256 mod16 = tokenId % 16;
+        
+        if (mod16 < 8) palette = 0;      // 8/15 chance = 50%
+        else if (mod16 < 12) palette = 1; // 4/15 chance = 31.25%
+        else if (mod16 < 14) palette = 2; // 2/15 chance = 12.5%
+        else palette = 3;                 // 1/15 chance = 6.25%
+
+        setTokenMetadata(
+            tokenId,
+            "Untitled",
+            "A new NFT",
+            "",
+            "",
+            defaultValues,
+            palette
+        );
     }
 
     function generateTokenURI(uint256 tokenId) 
@@ -129,12 +150,10 @@ contract MetadataRenderer {
     {
         return string(
             abi.encodePacked(
-                '"values": [',
-                _generateValueString(values),
-                '],',
-                '"palette": "',
-                _getPaletteName(palette),
-                '"'
+                '"attributes": [',
+                '{"trait_type": "values", "value": "', _generateValueString(values), '"},',
+                '{"trait_type": "palette", "value": "', _getPaletteName(palette), '"}',
+                ']'
             )
         );
     }

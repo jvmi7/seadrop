@@ -4,7 +4,7 @@ pragma solidity 0.8.17;
 import { ERC721SeaDrop } from "../ERC721SeaDrop.sol";
 import { MetadataRenderer } from "./MetadataRenderer.sol";
 
-contract ERC721SeaDropMetadata is ERC721SeaDrop {
+contract ERC721SeaDropCustom is ERC721SeaDrop {
     MetadataRenderer public metadataRenderer;
 
     constructor(
@@ -47,5 +47,32 @@ contract ERC721SeaDropMetadata is ERC721SeaDrop {
     {
         if (!_exists(tokenId)) revert URIQueryForNonexistentToken();
         return metadataRenderer.generateTokenURI(tokenId);
+    }
+
+    function mintSeaDrop(address minter, uint256 quantity)
+        external
+        virtual
+        override
+        nonReentrant
+    {
+        // Ensure the SeaDrop is allowed
+        _onlyAllowedSeaDrop(msg.sender);
+
+        // Extra safety check to ensure the max supply is not exceeded
+        if (_totalMinted() + quantity > maxSupply()) {
+            revert MintQuantityExceedsMaxSupply(
+                _totalMinted() + quantity,
+                maxSupply()
+            );
+        }
+
+        // Mint the quantity of tokens to the minter
+        _safeMint(minter, quantity);
+
+        // Add our custom metadata logic
+        for (uint256 i = 0; i < quantity; i++) {
+            uint256 tokenId = _totalMinted() - quantity + i + 1;
+            metadataRenderer.setInitialMetadata(tokenId);
+        }
     }
 }
