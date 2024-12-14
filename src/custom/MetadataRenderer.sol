@@ -14,10 +14,14 @@ contract MetadataRenderer {
     uint256 private constant DAY_IN_SECONDS = 1;
 
     mapping(uint256 => uint8) private _tokenPalettes;
+    mapping(uint256 => bool) private _tokenLocked;
+    mapping(uint256 => uint8[7]) private _lockedValues;
 
     address public immutable nftContract;
 
     event MetadataUpdated(uint256 indexed tokenId);
+    event TokenLocked(uint256 indexed tokenId);
+    event TokenUnlocked(uint256 indexed tokenId);
 
     constructor(address _nftContract) {
         nftContract = _nftContract;
@@ -66,6 +70,19 @@ contract MetadataRenderer {
         _lastUpdateBlock = block.timestamp;
     }
 
+// For testing purposes only
+    function fastForwardDays() external {
+        _randomSeeds[0] = 0x0000000000000000000000000000000000000000000000000000000000000001;
+        _randomSeeds[1] = 0x0000000000000000000000000000000000000000000000000000000000000002;
+        _randomSeeds[2] = 0x0000000000000000000000000000000000000000000000000000000000000003;
+        _randomSeeds[3] = 0x0000000000000000000000000000000000000000000000000000000000000004;
+        _randomSeeds[4] = 0x0000000000000000000000000000000000000000000000000000000000000005;
+        _randomSeeds[5] = 0x0000000000000000000000000000000000000000000000000000000000000006;
+        _randomSeeds[6] = 0x0000000000000000000000000000000000000000000000000000000000000007;
+        
+        _lastUpdateBlock = block.timestamp;
+    }
+
     function generateTokenURI(uint256 tokenId) 
         external 
         view 
@@ -89,12 +106,16 @@ contract MetadataRenderer {
         view 
         returns (uint8[7] memory) 
     {
+        if (_tokenLocked[tokenId]) {
+            return _lockedValues[tokenId];
+        }
+
         uint8[7] memory values = [0, 0, 0, 0, 0, 0, 0];
 
         for (uint256 i = 0; i < 7; i++) {
             if (_randomSeeds[i] != 0) {
-                bytes32 combinedSeed = keccak256(abi.encodePacked(_randomSeeds[i], tokenId, i));
-                uint256 randomValue = uint256(combinedSeed) % 101;
+                bytes32 combinedSeed = keccak256(abi.encodePacked(_randomSeeds[i], tokenId));
+                uint256 randomValue = (uint256(combinedSeed) % 100) + 1;
                 values[i] = uint8(randomValue);
             }
         }
@@ -107,7 +128,7 @@ contract MetadataRenderer {
 
     function _generateFullTokenURI(uint256 tokenId, TokenMetadata memory metadata)
         internal
-        pure
+        view
         returns (string memory)
     {
         string memory imageUri = _generateImageURI(metadata.values, metadata.palette);
@@ -136,12 +157,12 @@ contract MetadataRenderer {
         uint256 tokenId,
         TokenMetadata memory metadata,
         string memory imageUri
-    ) internal pure returns (string memory) {
+    ) internal view returns (string memory) {
         return string(
             abi.encodePacked(
                 '{',
                 _generateBasicFields(tokenId, metadata, imageUri),
-                _generateAttributesSection(metadata.values, metadata.palette),
+                _generateAttributesSection(metadata.values, metadata.palette, _tokenLocked[tokenId]),
                 '}'
             )
         );
@@ -162,7 +183,7 @@ contract MetadataRenderer {
         );
     }
 
-    function _generateAttributesSection(uint8[7] memory values, uint8 palette)
+    function _generateAttributesSection(uint8[7] memory values, uint8 palette, bool isLocked)
         internal
         pure
         returns (string memory)
@@ -172,6 +193,7 @@ contract MetadataRenderer {
                 '"attributes": [',
                 '{"trait_type": "values", "value": "', _generateValueString(values), '"},',
                 '{"trait_type": "palette", "value": "', _getPaletteName(palette), '"},',
+                '{"trait_type": "locked", "value": "', isLocked ? 'true' : 'false', '"},',
                 '{"display_type": "number", "trait_type": "current_value", "value": ', 
                 uint256(_getCurrentValue(values)).toString(), 
                 ', "max_value": 100, "min_value": 0}',
@@ -220,5 +242,22 @@ contract MetadataRenderer {
             }
         }
         return 0; // Return 0 if all values are zero
+    }
+
+    function lockTokenValues(uint256 tokenId) external onlyNFTContract {
+        require(!_tokenLocked[tokenId], "Token already locked");
+        
+        // Get current values
+        uint8[7] memory currentValues = generateValuesFromSeeds(tokenId);
+        
+        // Check that all values are non-zero
+        for (uint256 i = 0; i < 7; i++) {
+            require(currentValues[i] > 0, "Cannot lock: some values are zero");
+        }
+        
+        _tokenLocked[tokenId] = true;
+        _lockedValues[tokenId] = currentValues;
+        
+        emit TokenLocked(tokenId);
     }
 }

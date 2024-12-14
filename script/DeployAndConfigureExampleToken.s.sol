@@ -66,11 +66,11 @@ contract DeployAndConfigureExampleToken is Script {
         );
 
         // We are ready, let's mint the first 3 tokens!
-        ISeaDrop(seadrop).mintPublic{ value: mintPrice * 16 }(
+        ISeaDrop(seadrop).mintPublic{ value: mintPrice * 15 }(
             address(token),
             feeRecipient,
             address(0),
-            16 // quantity
+            15 // quantity
         );
 
 

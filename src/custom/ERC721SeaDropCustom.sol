@@ -54,4 +54,20 @@ contract ERC721SeaDropCustom is ERC721SeaDrop {
             metadataRenderer.setInitialMetadata(tokenId);
         }
     }
+
+    event TokenValuesLocked(uint256 indexed tokenId, address indexed owner);
+
+    function lockTokenValues(uint256 tokenId) external nonReentrant {
+        // Check that the token exists and sender is the owner
+        if (!_exists(tokenId)) revert URIQueryForNonexistentToken();
+        require(ownerOf(tokenId) == msg.sender, "Not token owner");
+        
+        // Check that metadata renderer is set
+        require(address(metadataRenderer) != address(0), "Metadata renderer not set");
+        
+        // Call the metadata renderer's lock function
+        metadataRenderer.lockTokenValues(tokenId);
+        
+        emit TokenValuesLocked(tokenId, msg.sender);
+    }
 }
