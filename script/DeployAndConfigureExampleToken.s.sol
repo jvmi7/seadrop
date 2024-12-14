@@ -4,9 +4,11 @@ pragma solidity 0.8.17;
 import "forge-std/Script.sol";
 import { ERC721SeaDropCustom } from "../src/custom/ERC721SeaDropCustom.sol";
 import { MetadataRenderer } from "../src/custom/MetadataRenderer.sol";
+import { ValueGenerator } from "../src/custom/generators/ValueGenerator.sol";
 import { ISeaDrop } from "../src/interfaces/ISeaDrop.sol";
 import { PublicDrop } from "../src/lib/SeaDropStructs.sol";
 import { Strings } from "openzeppelin-contracts/utils/Strings.sol";
+import { MetadataGenerator } from "../src/custom/generators/MetadataGenerator.sol";
 
 contract DeployAndConfigureExampleToken is Script {
     using Strings for uint256;
@@ -25,6 +27,9 @@ contract DeployAndConfigureExampleToken is Script {
     uint16 maxTotalMintableByWallet = 100;
 
     ERC721SeaDropCustom token;
+    ValueGenerator valueGenerator;
+    MetadataRenderer renderer;
+    MetadataGenerator metadataGenerator;
 
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
@@ -34,23 +39,33 @@ contract DeployAndConfigureExampleToken is Script {
         address[] memory allowedSeadrop = new address[](1);
         allowedSeadrop[0] = seadrop;
 
-        // Deploy NFT contract first
+        // Deploy NFT contract
         token = new ERC721SeaDropCustom(
             "Example Token",
             "ExTKN",
             allowedSeadrop
         );
 
-        // Then deploy renderer with NFT contract address
-        MetadataRenderer renderer = new MetadataRenderer(address(token));
+        // Deploy ValueGenerator
+        valueGenerator = new ValueGenerator();
+
+        // Deploy MetadataGenerator
+        metadataGenerator = new MetadataGenerator();
+
+        // Deploy MetadataRenderer with all required addresses
+        renderer = new MetadataRenderer(
+            address(token),
+            address(valueGenerator),
+            address(metadataGenerator)
+        );
 
         // Set the renderer in the NFT contract
         token.setMetadataRenderer(address(renderer));
 
-        // Configure the token.
+        // Configure the token
         token.setMaxSupply(maxSupply);
 
-        // Configure the drop parameters.
+        // Configure the drop parameters
         token.updateCreatorPayoutAddress(seadrop, creator);
         token.updateAllowedFeeRecipient(seadrop, feeRecipient, true);
         token.updatePublicDrop(
@@ -65,14 +80,14 @@ contract DeployAndConfigureExampleToken is Script {
             )
         );
 
-        // We are ready, let's mint the first 3 tokens!
+        
+        // Mint initial tokens
         ISeaDrop(seadrop).mintPublic{ value: mintPrice * 15 }(
             address(token),
             feeRecipient,
             address(0),
             15 // quantity
         );
-
 
         vm.stopBroadcast();
     }
