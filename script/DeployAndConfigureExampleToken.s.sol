@@ -9,6 +9,7 @@ import { ISeaDrop } from "../src/interfaces/ISeaDrop.sol";
 import { PublicDrop } from "../src/lib/SeaDropStructs.sol";
 import { Strings } from "openzeppelin-contracts/utils/Strings.sol";
 import { MetadataGenerator } from "../src/custom/generators/MetadataGenerator.sol";
+import { Constants } from "../src/custom/libraries/Constants.sol";
 
 contract DeployAndConfigureExampleToken is Script {
     using Strings for uint256;
@@ -52,14 +53,14 @@ contract DeployAndConfigureExampleToken is Script {
         // Deploy MetadataGenerator
         metadataGenerator = new MetadataGenerator();
 
-        // Deploy MetadataRenderer with all required addresses
+        // Deploy MetadataRenderer
         renderer = new MetadataRenderer(
             address(token),
             address(valueGenerator),
             address(metadataGenerator)
         );
 
-        // Set the renderer in the NFT contract
+        // Set the MetadataRenderer in the NFT contract
         token.setMetadataRenderer(address(renderer));
 
         // Configure the token
@@ -79,15 +80,24 @@ contract DeployAndConfigureExampleToken is Script {
                 true
             )
         );
-
         
         // Mint initial tokens
-        ISeaDrop(seadrop).mintPublic{ value: mintPrice * 15 }(
+        ISeaDrop(seadrop).mintPublic{ value: mintPrice * 100 }(
             address(token),
             feeRecipient,
             address(0),
-            15 // quantity
+            100 // quantity
         );
+
+        valueGenerator.fastForwardDays();
+
+        // trade in 4 tokens for a new palette
+        uint256[] memory tokenIds = new uint256[](4);
+        tokenIds[0] = 1;
+        tokenIds[1] = 9;
+        tokenIds[2] = 13;
+        tokenIds[3] = 14;
+        token.convertTokens(tokenIds, 4);
 
         vm.stopBroadcast();
     }

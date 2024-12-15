@@ -33,4 +33,17 @@ library Constants {
     string internal constant BASE_DESCRIPTION = "A new NFT";
     /// @notice Prefix used for palette names
     string internal constant PALETTE_PREFIX = "Palette ";
+
+    // Palette types
+    uint8 public constant PALETTE_0 = 0;
+    uint8 public constant PALETTE_1 = 1;
+    uint8 public constant PALETTE_2 = 2;
+    uint8 public constant PALETTE_3 = 3;
+    uint8 public constant PALETTE_CHROMATIC = 4;
+    uint8 public constant PALETTE_PASTEL = 5;
+    uint8 public constant PALETTE_GREYSCALE = 6;
+    uint8 public constant TOTAL_PALETTES = 7;
+
+    // Conversion requirements
+    uint8 public constant CONVERSION_BATCH_SIZE = 4;
 }

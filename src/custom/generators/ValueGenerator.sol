@@ -11,19 +11,25 @@ import "../libraries/Constants.sol";
  */
 contract ValueGenerator is IValueGenerator {
     // Constants for array sizes
-    uint256 private constant SEED_ARRAY_SIZE = 7;    // Number of random seeds to store
-    uint256 private constant VALUES_ARRAY_SIZE = 7;  // Number of values to generate
+    uint256 private constant SEED_ARRAY_SIZE = 7;    
+    uint256 private constant VALUES_ARRAY_SIZE = 7;  
 
     // State variables
-    bytes32[SEED_ARRAY_SIZE] private _randomSeeds;   // Array to store random seeds
-    uint256 private _lastUpdateBlock;                // Timestamp of last seed update
+    bytes32[SEED_ARRAY_SIZE] private _randomSeeds;   
+    uint256 private _lastUpdateBlock;                
+    uint256 private _currentIteration;
+    mapping(uint256 => uint256) private _tokenMintIteration;
 
     // Custom errors
-    error TooEarlyToUpdate();    // Thrown when trying to update seeds before 24 hours
-    error InvalidBlockHash();     // Thrown when block hash is invalid or unavailable
+    error TooEarlyToUpdate();    
+    error InvalidBlockHash();     
 
     constructor() {
         _lastUpdateBlock = block.timestamp;
+    }
+
+    function setTokenMintIteration(uint256 tokenId) external {
+        _tokenMintIteration[tokenId] = _currentIteration;
     }
 
     /**
@@ -36,7 +42,25 @@ contract ValueGenerator is IValueGenerator {
         view 
         returns (uint8[VALUES_ARRAY_SIZE] memory) 
     {
-        return _generateNewValues(tokenId);
+        uint256 mintIteration = _tokenMintIteration[tokenId];
+        
+        // If not a special token, generate normally
+        if (mintIteration == 0) {
+            return _generateNewValues(tokenId);
+        }
+        
+        // For special tokens, calculate revealed values
+        uint256 iterationsSinceMint = _currentIteration - mintIteration;
+        uint256 valuesRevealed = iterationsSinceMint;
+        
+        uint8[VALUES_ARRAY_SIZE] memory values = _generateNewValues(tokenId);
+        
+        // Zero out unrevealed values starting from the end
+        for (uint256 i = VALUES_ARRAY_SIZE; i > valuesRevealed; i--) {
+            values[i-1] = 0;
+        }
+        
+        return values;
     }
 
     /**
@@ -51,6 +75,7 @@ contract ValueGenerator is IValueGenerator {
         bytes32 newSeed = _getNewRandomSeed();
         _updateRandomSeeds(newSeed);
         _lastUpdateBlock = block.timestamp;
+        _currentIteration++;
     }
 
     /**
@@ -73,7 +98,8 @@ contract ValueGenerator is IValueGenerator {
         _randomSeeds[4] = 0x0000000000000000000000000000000000000000000000000000000000000005;
         _randomSeeds[5] = 0x0000000000000000000000000000000000000000000000000000000000000006;
         _randomSeeds[6] = 0x0000000000000000000000000000000000000000000000000000000000000007;
-        
+
+        _currentIteration+=7;
         _lastUpdateBlock = block.timestamp;
     }
 
@@ -160,5 +186,13 @@ contract ValueGenerator is IValueGenerator {
             _randomSeeds[i] = _randomSeeds[i + 1];
         }
         _randomSeeds[SEED_ARRAY_SIZE - 1] = newSeed;
+    }
+
+    function getCurrentIteration() external view returns (uint256) {
+        return _currentIteration;
+    }
+    
+    function getTokenMintIteration(uint256 tokenId) external view returns (uint256) {
+        return _tokenMintIteration[tokenId];
     }
 }

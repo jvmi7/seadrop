@@ -35,6 +35,8 @@ contract MetadataRenderer {
     mapping(uint256 => bool) private _tokenLocked;
     /// @notice Stores the locked values for tokens
     mapping(uint256 => uint8[VALUES_ARRAY_SIZE]) private _lockedValues;
+    /// @notice Tracks whether a token is a special token
+    mapping(uint256 => bool) private _isSpecialToken;
 
     // Events
     /// @notice Emitted when a token's metadata is updated
@@ -157,5 +159,37 @@ contract MetadataRenderer {
         if (mod16 < Constants.PALETTE_2_THRESHOLD) return 2;
         if (mod16 < Constants.PALETTE_3_THRESHOLD) return 3;
         return 0;
+    }
+
+    /**
+     * @notice Sets a token as a special token
+     * @param tokenId The ID of the token to set as special
+     * @param palette The palette of the special token
+     */
+    function setSpecialToken(uint256 tokenId, uint8 palette) external {
+        require(msg.sender == nftContract, "Only NFT contract");
+        require(palette >= Constants.PALETTE_CHROMATIC, "Not a special palette");
+        _isSpecialToken[tokenId] = true;
+        _tokenPalettes[tokenId] = palette;
+        valueGenerator.setTokenMintIteration(tokenId);
+    }
+
+    /**
+     * @notice Gets the palette of a token
+     * @param tokenId The ID of the token to get the palette for
+     * @return The palette of the token
+     */
+    function getTokenPalette(uint256 tokenId) external view returns (uint8) {
+        return _tokenPalettes[tokenId];
+    }
+
+    function isSpecialToken(uint256 tokenId) external view returns (bool) {
+        return _isSpecialToken[tokenId];
+    }
+    
+    function getRevealedValueCount(uint256 tokenId) external view returns (uint256) {
+        if (!_isSpecialToken[tokenId]) return VALUES_ARRAY_SIZE;
+        return valueGenerator.getCurrentIteration() - 
+               valueGenerator.getTokenMintIteration(tokenId);
     }
 }
