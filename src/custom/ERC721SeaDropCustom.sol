@@ -25,6 +25,7 @@ contract ERC721SeaDropCustom is ERC721SeaDrop {
     struct PaletteConversion {
         uint8 requiredPalette;
         uint8 resultPalette;
+        uint8 requiredTokenCount;
     }
 
     /// @notice Emitted when tokens are converted to a different palette
@@ -51,17 +52,20 @@ contract ERC721SeaDropCustom is ERC721SeaDrop {
         // Set up conversion rules
         paletteConversions[Constants.PALETTE_CHROMATIC] = PaletteConversion({
             requiredPalette: type(uint8).max,
-            resultPalette: Constants.PALETTE_CHROMATIC
+            resultPalette: Constants.PALETTE_CHROMATIC,
+            requiredTokenCount: 4
         });
         
         paletteConversions[Constants.PALETTE_PASTEL] = PaletteConversion({
             requiredPalette: Constants.PALETTE_CHROMATIC,
-            resultPalette: Constants.PALETTE_PASTEL
+            resultPalette: Constants.PALETTE_PASTEL,
+            requiredTokenCount: 3
         });
         
         paletteConversions[Constants.PALETTE_GREYSCALE] = PaletteConversion({
             requiredPalette: Constants.PALETTE_PASTEL,
-            resultPalette: Constants.PALETTE_GREYSCALE
+            resultPalette: Constants.PALETTE_GREYSCALE,
+            requiredTokenCount: 2
         });
     }
 
@@ -155,8 +159,10 @@ contract ERC721SeaDropCustom is ERC721SeaDrop {
         external 
         nonReentrant 
     {
-        require(tokenIds.length == Constants.CONVERSION_BATCH_SIZE, 
-            "Must provide exactly 4 tokens");
+        PaletteConversion memory conversion = paletteConversions[targetPalette];
+        require(conversion.resultPalette != 0, "Conversion not available");
+        require(tokenIds.length == conversion.requiredTokenCount, 
+            "Invalid number of tokens");
             
         // Check for duplicate token IDs
         for (uint256 i = 0; i < tokenIds.length; i++) {
@@ -164,25 +170,29 @@ contract ERC721SeaDropCustom is ERC721SeaDrop {
                 require(tokenIds[i] != tokenIds[j], "Duplicate token ID");
             }
         }
-        
-        PaletteConversion memory conversion = paletteConversions[targetPalette];
-        require(conversion.resultPalette != 0, "Conversion not available");
 
         // Verify ownership and palettes
-        bool[4] memory basepalettesFound;
-        for (uint256 i = 0; i < tokenIds.length; i++) {
-            require(_exists(tokenIds[i]), "Token does not exist");
-            require(ownerOf(tokenIds[i]) == msg.sender, "Not token owner");
-            
-            uint8 tokenPalette = metadataRenderer.getTokenPalette(tokenIds[i]);
-            
-            if (conversion.requiredPalette == type(uint8).max) {
+        if (conversion.requiredPalette == type(uint8).max) {
+            // For chromatic conversion, check for 4 different base palettes
+            bool[4] memory basepalettesFound;
+            for (uint256 i = 0; i < tokenIds.length; i++) {
+                require(_exists(tokenIds[i]), "Token does not exist");
+                require(ownerOf(tokenIds[i]) == msg.sender, "Not token owner");
+                
+                uint8 tokenPalette = metadataRenderer.getTokenPalette(tokenIds[i]);
                 require(tokenPalette < Constants.PALETTE_CHROMATIC, 
                     "Invalid token palette");
                 require(!basepalettesFound[tokenPalette], 
                     "Duplicate palette");
                 basepalettesFound[tokenPalette] = true;
-            } else {
+            }
+        } else {
+            // For other conversions, verify all tokens are of required palette
+            for (uint256 i = 0; i < tokenIds.length; i++) {
+                require(_exists(tokenIds[i]), "Token does not exist");
+                require(ownerOf(tokenIds[i]) == msg.sender, "Not token owner");
+                
+                uint8 tokenPalette = metadataRenderer.getTokenPalette(tokenIds[i]);
                 require(tokenPalette == conversion.requiredPalette, 
                     "Wrong palette for conversion");
             }
@@ -195,10 +205,8 @@ contract ERC721SeaDropCustom is ERC721SeaDrop {
             _burn(tokenIds[i]);
         }
 
-        bool success = metadataRenderer.setSpecialToken(newTokenId, conversion.resultPalette);
-        require(success, "Special token setting failed");
-        
-        // Event emission (part of effects, but typically done last)
+        metadataRenderer.setSpecialToken(newTokenId, conversion.resultPalette);
+
         emit TokensConverted(tokenIds, newTokenId, targetPalette);
     }
 }

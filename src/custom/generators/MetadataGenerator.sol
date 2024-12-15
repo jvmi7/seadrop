@@ -7,6 +7,8 @@ import "../interfaces/IMetadataGenerator.sol";
 import "../types/MetadataTypes.sol";
 import "../libraries/Constants.sol";
 import "../libraries/SVGGenerator.sol";
+import "../libraries/Palettes.sol";
+import "../libraries/Utils.sol";
 
 /**
  * @title MetadataGenerator
@@ -15,6 +17,7 @@ import "../libraries/SVGGenerator.sol";
  */
 contract MetadataGenerator is IMetadataGenerator {
     using Strings for uint256;
+    using Utils for uint8;
 
     /**
      * @notice Generates the complete token URI with base64 encoded metadata
@@ -126,22 +129,14 @@ contract MetadataGenerator is IMetadataGenerator {
         pure 
         returns (string memory) 
     {
+        Palettes.ColorPalette memory palette = Palettes.getColorPalette(metadata.palette);
         return string(
             abi.encodePacked(
-                '{"trait_type":"palette","value":"', _getPaletteName(metadata.palette), '"},',
+                '{"trait_type":"palette","value":"', palette.name, '"},',
                 '{"trait_type":"isLocked","value":"', metadata.isLocked ? 'yes' : 'no', '"},',
                 '{"trait_type":"value","value":"', uint256(_getLastNonZeroValue(metadata.values)).toString(), '"}'
             )
         );
-    }
-
-    /**
-     * @notice Generates the palette name string
-     * @param palette The palette index
-     * @return The formatted palette name string
-     */
-    function _getPaletteName(uint8 palette) private pure returns (string memory) {
-        return string(abi.encodePacked(Constants.PALETTE_PREFIX, uint256(palette).toString()));
     }
 
     /**
@@ -166,14 +161,30 @@ contract MetadataGenerator is IMetadataGenerator {
     /**
      * @notice Generates the name for a token based on its ID
      * @param tokenId The ID of the token
-     * @return The formatted name string
+     * @return The formatted name string in format "$ABC-DEF" using A-F,X-Z characters
      */
     function generateName(uint256 tokenId) 
         public 
         pure 
         returns (string memory) 
     {
-        return string(abi.encodePacked(Constants.BASE_NAME, " #", tokenId.toString()));
+        bytes memory letters = "ABCDEFXYZ";
+        bytes memory result = new bytes(8); // 1 dollar sign + 3 chars + hyphen + 3 chars
+        
+        // Create a pseudo-random but deterministic number from tokenId
+        uint256 hash = uint256(keccak256(abi.encodePacked(tokenId)));
+        
+        // Add dollar sign and use hash to get deterministic but non-sequential letters
+        result[0] = "$";
+        result[1] = letters[hash % 9];
+        result[2] = letters[(hash / 9) % 9];
+        result[3] = letters[(hash / 81) % 9];
+        result[4] = "-";
+        result[5] = letters[(hash / 729) % 9];
+        result[6] = letters[(hash / 6561) % 9];
+        result[7] = letters[(hash / 59049) % 9];
+        
+        return string(result);
     }
 
     /**

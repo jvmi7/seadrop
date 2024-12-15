@@ -89,15 +89,82 @@ contract DeployAndConfigureExampleToken is Script {
             100 // quantity
         );
 
+
         valueGenerator.fastForwardDays();
+
+        // ===== CHROMATIC =====
 
         // trade in 4 tokens for a new palette
         uint256[] memory tokenIds = new uint256[](4);
         tokenIds[0] = 1;
-        tokenIds[1] = 9;
-        tokenIds[2] = 13;
-        tokenIds[3] = 14;
+        tokenIds[1] = 2;
+        tokenIds[2] = 3;
+        tokenIds[3] = 4;
         token.convertTokens(tokenIds, 4);
+
+        // trade in 4 tokens for a new palette
+        uint256[] memory tokenIds1 = new uint256[](4);
+        tokenIds1[0] = 5;
+        tokenIds1[1] = 6;
+        tokenIds1[2] = 7;
+        tokenIds1[3] = 8;
+        token.convertTokens(tokenIds1, 4);
+
+        // trade in 4 tokens for a new palette
+        uint256[] memory tokenIds2 = new uint256[](4);
+        tokenIds2[0] = 9;
+        tokenIds2[1] = 10;
+        tokenIds2[2] = 11;
+        tokenIds2[3] = 12;
+        token.convertTokens(tokenIds2, 4);
+
+        // trade in 4 tokens for a new palette
+        uint256[] memory tokenIds3 = new uint256[](4);
+        tokenIds3[0] = 13;
+        tokenIds3[1] = 14;
+        tokenIds3[2] = 15;
+        tokenIds3[3] = 16;
+        token.convertTokens(tokenIds3, 4);
+
+        // trade in 4 tokens for a new palette
+        uint256[] memory tokenIds4 = new uint256[](4);
+        tokenIds4[0] = 17;
+        tokenIds4[1] = 18;
+        tokenIds4[2] = 19;
+        tokenIds4[3] = 20;
+        token.convertTokens(tokenIds4, 4);
+
+        // trade in 4 tokens for a new palette
+        uint256[] memory tokenIds5 = new uint256[](4);
+        tokenIds5[0] = 21;
+        tokenIds5[1] = 22;
+        tokenIds5[2] = 23;
+        tokenIds5[3] = 24;
+        token.convertTokens(tokenIds5, 4);
+
+        // ===== PASTEL =====
+
+        // trade in 4 tokens for a new palette
+        uint256[] memory tokenIds6 = new uint256[](3);
+        tokenIds6[0] = 101;
+        tokenIds6[1] = 102;
+        tokenIds6[2] = 103;
+        token.convertTokens(tokenIds6, 5);
+
+        // trade in 4 tokens for a new palette
+        uint256[] memory tokenIds7 = new uint256[](3);
+        tokenIds7[0] = 104;
+        tokenIds7[1] = 105;
+        tokenIds7[2] = 106;
+        token.convertTokens(tokenIds7, 5);
+
+        // ===== GREYSCALE =====
+
+        // trade in 4 tokens for a new palette
+        uint256[] memory tokenIds8 = new uint256[](2);
+        tokenIds8[0] = 107;
+        tokenIds8[1] = 108;
+        token.convertTokens(tokenIds8, 6);
 
         vm.stopBroadcast();
     }

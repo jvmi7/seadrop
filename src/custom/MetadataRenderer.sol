@@ -152,12 +152,12 @@ contract MetadataRenderer {
      * @return Palette index (0-3)
      */
     function _calculateInitialPalette(uint256 tokenId) private pure returns (uint8) {
-        uint256 mod16 = tokenId % Constants.TOTAL_DISTRIBUTION_RANGE;
+        uint256 mod4 = tokenId % Constants.TOTAL_DISTRIBUTION_RANGE;
         
-        if (mod16 < Constants.PALETTE_0_THRESHOLD) return 0;
-        if (mod16 < Constants.PALETTE_1_THRESHOLD) return 1;
-        if (mod16 < Constants.PALETTE_2_THRESHOLD) return 2;
-        if (mod16 < Constants.PALETTE_3_THRESHOLD) return 3;
+        if (mod4 < Constants.PALETTE_0_THRESHOLD) return 0;
+        if (mod4 < Constants.PALETTE_1_THRESHOLD) return 1;
+        if (mod4 < Constants.PALETTE_2_THRESHOLD) return 2;
+        if (mod4 < Constants.PALETTE_3_THRESHOLD) return 3;
         return 0;
     }
 
