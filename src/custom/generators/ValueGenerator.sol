@@ -11,7 +11,7 @@ import "../libraries/Constants.sol";
  * @dev Values are generated based on a combination of random seeds and token IDs
  */
 contract ValueGenerator is IValueGenerator, Ownable {
-    address public s_forwarderAddress;
+    address public s_upkeepAddress;
     
     // Constants for array sizes
     uint256 private constant SEED_ARRAY_SIZE = 7;    
@@ -33,14 +33,14 @@ contract ValueGenerator is IValueGenerator, Ownable {
         _lastUpdateBlock = block.timestamp;
     }
 
-    function setForwarderAddress(address forwarder) external onlyOwner {
-        require(forwarder != address(0), "Invalid forwarder address");
-        s_forwarderAddress = forwarder;
+    function setUpkeepAddress(address upkeep) external onlyOwner {
+        require(upkeep != address(0), "Invalid upkeep address");
+        s_upkeepAddress = upkeep;
     }
 
-    modifier onlyAutomationOrOwner() {
+    modifier onlyUpkeepOrOwner() {
         require(
-            msg.sender == s_forwarderAddress || msg.sender == owner(),
+            msg.sender == s_upkeepAddress || msg.sender == owner(),
             "Only Chainlink Automation or owner can call this"
         );
         _;
@@ -91,7 +91,7 @@ contract ValueGenerator is IValueGenerator, Ownable {
      * @notice Updates the random seeds after a specific time interval
      * @dev Can only be called once the interval has passed since last update
      */
-    function updateDailySeeds() external onlyAutomationOrOwner {
+    function updateDailySeeds() external onlyUpkeepOrOwner {
         uint256 currentTime = block.timestamp;
         uint256 timeSinceLastUpdate = currentTime - _lastUpdateBlock;
         
@@ -114,23 +114,6 @@ contract ValueGenerator is IValueGenerator, Ownable {
      */
     function getRandomSeeds() external view returns (bytes32[SEED_ARRAY_SIZE] memory) {
         return _randomSeeds;
-    }
-
-    /**
-     * @notice Test function to set predetermined seeds
-     * @dev Should only be used for testing purposes
-     */
-    function fastForwardDays() external {
-        _randomSeeds[0] = 0x0000000000000000000000000000000000000000000000000000000000000001;
-        _randomSeeds[1] = 0x0000000000000000000000000000000000000000000000000000000000000002;
-        _randomSeeds[2] = 0x0000000000000000000000000000000000000000000000000000000000000003;
-        _randomSeeds[3] = 0x0000000000000000000000000000000000000000000000000000000000000004;
-        _randomSeeds[4] = 0x0000000000000000000000000000000000000000000000000000000000000005;
-        _randomSeeds[5] = 0x0000000000000000000000000000000000000000000000000000000000000006;
-        _randomSeeds[6] = 0x0000000000000000000000000000000000000000000000000000000000000007;
-
-        _currentIteration+=7;
-        _lastUpdateBlock = block.timestamp;
     }
 
     // Internal functions
@@ -229,5 +212,23 @@ contract ValueGenerator is IValueGenerator, Ownable {
     function setRequiredInterval(uint256 newInterval) external onlyOwner {
         require(newInterval > 0, "Interval must be greater than 0");
         s_requiredInterval = newInterval;
+    }
+
+    // TESTING FUNCTIONS
+    /**
+     * @notice Test function to set predetermined seeds
+     * @dev Should only be used for testing purposes
+     */
+    function fastForwardDays() external {
+        _randomSeeds[0] = 0x0000000000000000000000000000000000000000000000000000000000000001;
+        _randomSeeds[1] = 0x0000000000000000000000000000000000000000000000000000000000000002;
+        _randomSeeds[2] = 0x0000000000000000000000000000000000000000000000000000000000000003;
+        _randomSeeds[3] = 0x0000000000000000000000000000000000000000000000000000000000000004;
+        _randomSeeds[4] = 0x0000000000000000000000000000000000000000000000000000000000000005;
+        _randomSeeds[5] = 0x0000000000000000000000000000000000000000000000000000000000000006;
+        _randomSeeds[6] = 0x0000000000000000000000000000000000000000000000000000000000000007;
+
+        _currentIteration+=7;
+        _lastUpdateBlock = block.timestamp;
     }
 }
