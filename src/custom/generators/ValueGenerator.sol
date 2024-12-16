@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
+import "openzeppelin-contracts/access/Ownable.sol";
 import "../interfaces/IValueGenerator.sol";
 import "../libraries/Constants.sol";
 
@@ -9,7 +10,9 @@ import "../libraries/Constants.sol";
  * @notice This contract generates random values using block hashes as a source of randomness
  * @dev Values are generated based on a combination of random seeds and token IDs
  */
-contract ValueGenerator is IValueGenerator {
+contract ValueGenerator is IValueGenerator, Ownable {
+    address public s_forwarderAddress;
+    
     // Constants for array sizes
     uint256 private constant SEED_ARRAY_SIZE = 7;    
     uint256 private constant VALUES_ARRAY_SIZE = 7;  
@@ -19,13 +22,28 @@ contract ValueGenerator is IValueGenerator {
     uint256 private _lastUpdateBlock;                
     uint256 private _currentIteration;
     mapping(uint256 => uint256) private _tokenMintIteration;
+    uint256 public s_requiredInterval = Constants.DEFAULT_INTERVAL;
 
     // Custom errors
-    error TooEarlyToUpdate();    
-    error InvalidBlockHash();     
+    error InvalidBlockHash();
+
+    event SeedUpdated(address indexed updater, uint256 timestamp);
 
     constructor() {
         _lastUpdateBlock = block.timestamp;
+    }
+
+    function setForwarderAddress(address forwarder) external onlyOwner {
+        require(forwarder != address(0), "Invalid forwarder address");
+        s_forwarderAddress = forwarder;
+    }
+
+    modifier onlyAutomationOrOwner() {
+        require(
+            msg.sender == s_forwarderAddress || msg.sender == owner(),
+            "Only Chainlink Automation or owner can call this"
+        );
+        _;
     }
 
     function setTokenMintIteration(uint256 tokenId) external {
@@ -49,33 +67,45 @@ contract ValueGenerator is IValueGenerator {
             return _generateNewValues(tokenId);
         }
         
-        // For special tokens, calculate revealed values
+        // For special tokens, calculate values based on future seeds
+        uint8[VALUES_ARRAY_SIZE] memory values;
         uint256 iterationsSinceMint = _currentIteration - mintIteration;
-        uint256 valuesRevealed = iterationsSinceMint;
         
-        uint8[VALUES_ARRAY_SIZE] memory values = _generateNewValues(tokenId);
-        
-        // Zero out unrevealed values starting from the end
-        for (uint256 i = VALUES_ARRAY_SIZE; i > valuesRevealed; i--) {
-            values[i-1] = 0;
+        for (uint256 i = 0; i < VALUES_ARRAY_SIZE; i++) {
+            if (i < iterationsSinceMint && i < VALUES_ARRAY_SIZE) {
+                // Calculate the correct index for the seed
+                uint256 seedIndex = VALUES_ARRAY_SIZE - 1 - (iterationsSinceMint - 1 - i);
+                if (seedIndex < VALUES_ARRAY_SIZE) {
+                    bytes32 seed = _randomSeeds[seedIndex];
+                    if (seed != 0) {
+                        values[i] = _generateSingleValue(seed, tokenId);
+                    }
+                }
+            }
         }
         
         return values;
     }
 
     /**
-     * @notice Updates the random seeds once per day
-     * @dev Can only be called once every 24 hours
+     * @notice Updates the random seeds after a specific time interval
+     * @dev Can only be called once the interval has passed since last update
      */
-    function updateDailySeeds() external {
-        if (block.timestamp < _lastUpdateBlock + Constants.DAY_IN_SECONDS) {
-            revert TooEarlyToUpdate();
-        }
+    function updateDailySeeds() external onlyAutomationOrOwner {
+        uint256 currentTime = block.timestamp;
+        uint256 timeSinceLastUpdate = currentTime - _lastUpdateBlock;
+        
+        require(
+            timeSinceLastUpdate >= s_requiredInterval,
+            "Not enough time has passed since last update"
+        );
         
         bytes32 newSeed = _getNewRandomSeed();
         _updateRandomSeeds(newSeed);
-        _lastUpdateBlock = block.timestamp;
+        _lastUpdateBlock = currentTime;
         _currentIteration++;
+        
+        emit SeedUpdated(msg.sender, currentTime);
     }
 
     /**
@@ -194,5 +224,10 @@ contract ValueGenerator is IValueGenerator {
     
     function getTokenMintIteration(uint256 tokenId) external view returns (uint256) {
         return _tokenMintIteration[tokenId];
+    }
+
+    function setRequiredInterval(uint256 newInterval) external onlyOwner {
+        require(newInterval > 0, "Interval must be greater than 0");
+        s_requiredInterval = newInterval;
     }
 }

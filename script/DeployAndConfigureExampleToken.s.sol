@@ -18,7 +18,8 @@ contract DeployAndConfigureExampleToken is Script {
     address seadrop = 0x00005EA00Ac477B1030CE78506496e8C2dE24bf5;
     address creator = 0x49A177C521B8b0710330392b862293716E2237B9;
     address feeRecipient = 0x49A177C521B8b0710330392b862293716E2237B9;
-
+    address chainlinkForwarder = 0x586E12fa9369D1496870E16933C35a8Ba1292007;
+    
     // Token config
     uint256 maxSupply = 100;
 
@@ -49,6 +50,8 @@ contract DeployAndConfigureExampleToken is Script {
 
         // Deploy ValueGenerator
         valueGenerator = new ValueGenerator();
+
+        valueGenerator.setForwarderAddress(chainlinkForwarder);
 
         // Deploy MetadataGenerator
         metadataGenerator = new MetadataGenerator();
@@ -89,8 +92,7 @@ contract DeployAndConfigureExampleToken is Script {
             100 // quantity
         );
 
-
-        valueGenerator.fastForwardDays();
+        
 
         // ===== CHROMATIC =====
 
@@ -167,5 +169,16 @@ contract DeployAndConfigureExampleToken is Script {
         token.convertTokens(tokenIds8, 6);
 
         vm.stopBroadcast();
+
+        // Print all deployed contract addresses
+        console.log("=== Deployed Contract Addresses ===");
+        console.log("NFT Token:", address(token));
+        console.log("ValueGenerator:", address(valueGenerator));
+        console.log("MetadataGenerator:", address(metadataGenerator));
+        console.log("MetadataRenderer:", address(renderer));
+        console.log("=== Configuration Addresses ===");
+        console.log("SeaDrop:", seadrop);
+        console.log("Creator:", creator);
+        console.log("Fee Recipient:", feeRecipient);
     }
 }

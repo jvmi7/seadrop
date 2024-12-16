@@ -6,9 +6,10 @@ pragma solidity 0.8.17;
  * @notice Library containing all constant values used throughout the contract system
  */
 library Constants {
+
     // Time-related constants
     /// @notice Number of seconds in a day (set to 1 for testing purposes)
-    uint256 internal constant DAY_IN_SECONDS = 1;
+    uint256 internal constant DEFAULT_INTERVAL = 1;
 
     // Random value generation constants
     /// @notice Maximum value that can be generated (1-100 range)
