@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
+import "chainlink/contracts/src/v0.8/shared/access/ConfirmedOwner.sol";
+import "chainlink/contracts/src/v0.8/shared/interfaces/LinkTokenInterface.sol";
+import "chainlink/contracts/src/v0.8/vrf/dev/VRFV2PlusWrapperConsumerBase.sol";
+import "chainlink/contracts/src/v0.8/vrf/dev/libraries/VRFV2PlusClient.sol";
 import "../interfaces/IValueGenerator.sol";
 import "../libraries/Constants.sol";
 
@@ -9,23 +13,94 @@ import "../libraries/Constants.sol";
  * @notice This contract generates random values using block hashes as a source of randomness
  * @dev Values are generated based on a combination of random seeds and token IDs
  */
-contract ValueGenerator is IValueGenerator {
-    // Constants for array sizes
+contract ValueGenerator is IValueGenerator, VRFV2PlusWrapperConsumerBase, ConfirmedOwner {
     uint256 private constant SEED_ARRAY_SIZE = 7;    
     uint256 private constant VALUES_ARRAY_SIZE = 7;  
 
-    // State variables
     bytes32[SEED_ARRAY_SIZE] private _randomSeeds;   
     uint256 private _lastUpdateBlock;                
     uint256 private _currentIteration;
     mapping(uint256 => uint256) private _tokenMintIteration;
+    
+    // VRF request tracking
+    struct RequestStatus {
+        uint256 paid;
+        bool fulfilled;
+        uint256[] randomWords;
+    }
+    mapping(uint256 => RequestStatus) public s_requests;
+    uint256[] public requestIds;
+    uint256 public lastRequestId;
 
-    // Custom errors
+    // VRF configuration
+    uint32 public callbackGasLimit = 100000;
+    uint16 public requestConfirmations = 3;
+    uint32 public numWords = 1;
+
+    // Chainlink addresses
+    address public immutable linkAddress;
+    address public immutable wrapperAddress;
+    
     error TooEarlyToUpdate();    
-    error InvalidBlockHash();     
 
-    constructor() {
+    event RequestSent(uint256 requestId, uint32 numWords);
+    event RequestFulfilled(uint256 requestId, uint256[] randomWords, uint256 payment);
+
+    constructor(
+        address _wrapperAddress,
+        address _linkAddress
+    ) 
+        ConfirmedOwner(msg.sender)
+        VRFV2PlusWrapperConsumerBase(_wrapperAddress) 
+    {
+        wrapperAddress = _wrapperAddress;
+        linkAddress = _linkAddress;
         _lastUpdateBlock = block.timestamp;
+    }
+
+    function updateDailySeeds() external {
+        if (block.timestamp < _lastUpdateBlock + Constants.DAY_IN_SECONDS) {
+            revert TooEarlyToUpdate();
+        }
+
+        // Request randomness using native payment
+        bytes memory extraArgs = VRFV2PlusClient._argsToBytes(
+            VRFV2PlusClient.ExtraArgsV1({nativePayment: true})
+        );
+        
+        (uint256 requestId, uint256 reqPrice) = requestRandomnessPayInNative(
+            callbackGasLimit,
+            requestConfirmations,
+            numWords,
+            extraArgs
+        );
+
+        s_requests[requestId] = RequestStatus({
+            paid: reqPrice,
+            randomWords: new uint256[](0),
+            fulfilled: false
+        });
+        
+        requestIds.push(requestId);
+        lastRequestId = requestId;
+        emit RequestSent(requestId, numWords);
+    }
+
+    function fulfillRandomWords(
+        uint256 _requestId,
+        uint256[] memory _randomWords
+    ) internal override {
+        require(s_requests[_requestId].paid > 0, "request not found");
+        s_requests[_requestId].fulfilled = true;
+        s_requests[_requestId].randomWords = _randomWords;
+        
+        // Update seeds with the new random value
+        bytes32 newSeed = bytes32(_randomWords[0]);
+        _updateRandomSeeds(newSeed);
+        _lastUpdateBlock = block.timestamp;
+        _currentIteration++;
+        
+        emit RequestFulfilled(_requestId, _randomWords, s_requests[_requestId].paid);
     }
 
     function setTokenMintIteration(uint256 tokenId) external {
@@ -44,38 +119,20 @@ contract ValueGenerator is IValueGenerator {
     {
         uint256 mintIteration = _tokenMintIteration[tokenId];
         
-        // If not a special token, generate normally
         if (mintIteration == 0) {
             return _generateNewValues(tokenId);
         }
         
-        // For special tokens, calculate revealed values
         uint256 iterationsSinceMint = _currentIteration - mintIteration;
         uint256 valuesRevealed = iterationsSinceMint;
         
         uint8[VALUES_ARRAY_SIZE] memory values = _generateNewValues(tokenId);
         
-        // Zero out unrevealed values starting from the end
         for (uint256 i = VALUES_ARRAY_SIZE; i > valuesRevealed; i--) {
             values[i-1] = 0;
         }
         
         return values;
-    }
-
-    /**
-     * @notice Updates the random seeds once per day
-     * @dev Can only be called once every 24 hours
-     */
-    function updateDailySeeds() external {
-        if (block.timestamp < _lastUpdateBlock + Constants.DAY_IN_SECONDS) {
-            revert TooEarlyToUpdate();
-        }
-        
-        bytes32 newSeed = _getNewRandomSeed();
-        _updateRandomSeeds(newSeed);
-        _lastUpdateBlock = block.timestamp;
-        _currentIteration++;
     }
 
     /**
@@ -141,19 +198,6 @@ contract ValueGenerator is IValueGenerator {
     }
 
     /**
-     * @dev Gets a new random seed from the previous block hash
-     * @return A random seed derived from the previous block hash
-     */
-    function _getNewRandomSeed() private view returns (bytes32) {
-        if (block.number == 0) revert InvalidBlockHash();
-        
-        bytes32 previousBlockHash = blockhash(block.number - 1);
-        if (previousBlockHash == bytes32(0)) revert InvalidBlockHash();
-        
-        return previousBlockHash;
-    }
-
-    /**
      * @dev Updates the random seeds array with a new seed
      * @param newSeed The new seed to add to the array
      */
@@ -195,4 +239,20 @@ contract ValueGenerator is IValueGenerator {
     function getTokenMintIteration(uint256 tokenId) external view returns (uint256) {
         return _tokenMintIteration[tokenId];
     }
+
+    // Withdrawal functions
+    function withdrawLink() public onlyOwner {
+        LinkTokenInterface link = LinkTokenInterface(linkAddress);
+        require(
+            link.transfer(msg.sender, link.balanceOf(address(this))),
+            "Unable to transfer"
+        );
+    }
+
+    function withdrawNative(uint256 amount) external onlyOwner {
+        (bool success, ) = payable(owner()).call{value: amount}("");
+        require(success, "withdrawNative failed");
+    }
+
+    receive() external payable {}
 }

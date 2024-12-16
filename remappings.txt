@@ -10,3 +10,4 @@ seadrop/=src/
 solmate/=lib/solmate/src/
 utility-contracts/=lib/utility-contracts/src/
 create2-scripts/=lib/create2-helpers/script/
+chainlink/=lib/chainlink/

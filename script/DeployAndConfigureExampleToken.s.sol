@@ -19,6 +19,10 @@ contract DeployAndConfigureExampleToken is Script {
     address creator = 0x49A177C521B8b0710330392b862293716E2237B9;
     address feeRecipient = 0x49A177C521B8b0710330392b862293716E2237B9;
 
+    // Chainlink VRF V2.5 Configuration for Base Sepolia
+    address vrfWrapper = 0x7a1BaC17Ccc5b313516C5E16fb24f7659aA5ebed;  // VRF V2 Plus Wrapper
+    address linkToken = 0xE4aB69C077896252FAFBD49EFD26B5D171A32410;   // LINK Token
+
     // Token config
     uint256 maxSupply = 100;
 
@@ -47,8 +51,11 @@ contract DeployAndConfigureExampleToken is Script {
             allowedSeadrop
         );
 
-        // Deploy ValueGenerator
-        valueGenerator = new ValueGenerator();
+        // Deploy ValueGenerator with VRF V2.5 configuration
+        valueGenerator = new ValueGenerator(
+            vrfWrapper,
+            linkToken
+        );
 
         // Deploy MetadataGenerator
         metadataGenerator = new MetadataGenerator();
@@ -88,8 +95,7 @@ contract DeployAndConfigureExampleToken is Script {
             address(0),
             100 // quantity
         );
-
-
+        
         valueGenerator.fastForwardDays();
 
         // ===== CHROMATIC =====
