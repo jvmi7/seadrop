@@ -4,103 +4,201 @@ pragma solidity 0.8.17;
 import "openzeppelin-contracts/access/Ownable.sol";
 import "../interfaces/IValueGenerator.sol";
 import "../libraries/Constants.sol";
+import "../libraries/ArrayUtils.sol";
+import "../libraries/Utils.sol";
 
 /**
  * @title ValueGenerator
- * @notice This contract generates random values using block hashes as a source of randomness
- * @dev Values are generated based on a combination of random seeds and token IDs
+ * @notice Generates random values using block hashes as a source of randomness
+ * @dev This contract maintains a rolling array of random seeds that are updated periodically.
+ *      These seeds are used to generate deterministic but unpredictable values for tokens.
+ *
  */
 contract ValueGenerator is IValueGenerator, Ownable {
-    address public s_upkeepAddress;
-    
-    // Constants for array sizes
+    /*************************************/
+    /*              Constants            */
+    /*************************************/
+    /// @notice Size of the random seeds array
+    /// @dev Fixed size array to maintain recent random seeds
     uint256 private constant SEED_ARRAY_SIZE = 7;    
+
+    /// @notice Size of the values array generated for each token
+    /// @dev Must match SEED_ARRAY_SIZE for consistent generation
     uint256 private constant VALUES_ARRAY_SIZE = 7;  
 
-    // State variables
-    bytes32[SEED_ARRAY_SIZE] private _randomSeeds;   
-    uint256 private _lastUpdateBlock;                
+    /*************************************/
+    /*              Storage             */
+    /*************************************/
+    /// @notice Address authorized to perform automated seed updates
+    /// @dev Used by Chainlink Automation for periodic updates
+    address public s_upkeepAddress;
+
+    /// @notice Address authorized to render token metadata
+    /// @dev Must be set to interact with token minting and metadata
+    address public _metadataRendererAddress;
+
+    /// @notice Array of random seeds used for value generation
+    /// @dev Seeds are updated in a rolling fashion, with new seeds replacing old ones
+    bytes32[SEED_ARRAY_SIZE] private _randomSeeds;
+
+    /// @notice Timestamp of the last seed update
+    /// @dev Used to enforce minimum time between updates
+    uint256 private _lastUpdateBlock;
+
+    /// @notice Current update iteration number
+    /// @dev Increments with each seed update, used for tracking token generations
     uint256 private _currentIteration;
+
+    /// @notice Required time interval between seed updates
+    /// @dev Defaults to Constants.DEFAULT_INTERVAL
+    uint256 public _requiredInterval = Constants.DEFAULT_INTERVAL;
+
+    /// @notice Maps token IDs to their mint iteration number
+    /// @dev Used to determine which seeds were available when a token was minted
     mapping(uint256 => uint256) private _tokenMintIteration;
-    uint256 public s_requiredInterval = Constants.DEFAULT_INTERVAL;
-
-    // Custom errors
-    error InvalidBlockHash();
-
+    
+    /*************************************/
+    /*              Events               */
+    /*************************************/
+    /// @notice Emitted when random seeds are updated
+    /// @param updater Address that triggered the update
+    /// @param timestamp Time of the update
     event SeedUpdated(address indexed updater, uint256 timestamp);
 
+    /*************************************/
+    /*              Errors               */
+    /*************************************/
+    /// @notice Thrown when block hash is invalid or zero
+    error InvalidBlockHash();
+    /// @notice Thrown when attempting to set invalid upkeep address
+    error InvalidUpkeepAddress();
+    /// @notice Thrown when update interval is invalid
+    error InvalidInterval();
+    /// @notice Thrown when metadata renderer address is invalid
+    error InvalidMetadataRenderer();
+    /// @notice Thrown when attempting to update seeds before required interval
+    error InsufficientTimePassed();
+    /// @notice Thrown when unauthorized address calls restricted function
+    error UnauthorizedCaller();
+    /// @notice Thrown when non-metadata-renderer calls restricted function
+    error UnauthorizedMetadataRenderer();
+
+    /*************************************/
+    /*              Constructor          */
+    /*************************************/
+    /**
+     * @notice Initializes the contract with the current block timestamp
+     * @dev Sets initial _lastUpdateBlock to prevent immediate updates
+     */
     constructor() {
         _lastUpdateBlock = block.timestamp;
     }
 
-    function setUpkeepAddress(address upkeep) external onlyOwner {
-        require(upkeep != address(0), "Invalid upkeep address");
-        s_upkeepAddress = upkeep;
-    }
-
+    /*************************************/
+    /*              Modifiers            */
+    /*************************************/
+    /**
+     * @notice Restricts function access to upkeep address or contract owner
+     * @dev Used for functions that update random seeds
+     */
     modifier onlyUpkeepOrOwner() {
-        require(
-            msg.sender == s_upkeepAddress || msg.sender == owner(),
-            "Only Chainlink Automation or owner can call this"
-        );
+        if (msg.sender != s_upkeepAddress && msg.sender != owner()) {
+            revert UnauthorizedCaller();
+        }
         _;
     }
 
-    function setTokenMintIteration(uint256 tokenId) external {
+    /**
+     * @notice Restricts function access to metadata renderer contract
+     * @dev Used for functions that interact with token minting
+     */
+    modifier onlyMetadataRenderer() {
+        if (msg.sender != _metadataRendererAddress) {
+            revert UnauthorizedMetadataRenderer();
+        }
+        _;
+    }
+
+    /*************************************/
+    /*              Getters              */
+    /*************************************/
+    /**
+     * @notice Retrieves the current random seeds array
+     * @dev External view function for reading the entire seeds array
+     * @return The current random seeds array
+     */
+    function getRandomSeeds() external view returns (bytes32[SEED_ARRAY_SIZE] memory) {
+        return _randomSeeds;
+    }
+
+    /**
+     * @notice Retrieves the current iteration number
+     * @dev Used to track how many seed updates have occurred
+     * @return The current iteration number
+     */
+    function getCurrentIteration() external view returns (uint256) {
+        return _currentIteration;
+    }
+
+    /**
+     * @notice Retrieves the mint iteration number for a specific token
+     * @dev Used to determine which seeds were available when token was minted
+     * @param tokenId The ID of the token to query
+     * @return The iteration number when the token was minted
+     */
+    function getTokenMintIteration(uint256 tokenId) external view returns (uint256) {
+        return _tokenMintIteration[tokenId];
+    }
+
+    /*************************************/
+    /*              Setters              */
+    /*************************************/
+    /**
+     * @notice Sets the address authorized for automated upkeep
+     * @dev Only callable by contract owner
+     * @param upkeep Address of the Chainlink Automation contract
+     */
+    function setUpkeepAddress(address upkeep) external onlyOwner {
+        if (upkeep == address(0)) revert InvalidUpkeepAddress();
+        s_upkeepAddress = upkeep;
+    }
+
+    /**
+     * @notice Sets the authorized metadata renderer address
+     * @dev Only callable by contract owner
+     * @param renderer Address of the metadata renderer contract
+     */
+    function setMetadataRenderer(address renderer) external onlyOwner {
+        if (renderer == address(0)) revert InvalidMetadataRenderer();
+        _metadataRendererAddress = renderer;
+    }
+
+    /**
+     * @notice Records the iteration number when a token was minted
+     * @dev Only callable by metadata renderer contract
+     * @param tokenId The ID of the token being minted
+     */
+    function setTokenMintIteration(uint256 tokenId) external onlyMetadataRenderer {
         _tokenMintIteration[tokenId] = _currentIteration;
     }
 
+    /*************************************/
+    /*              External             */
+    /*************************************/
     /**
-     * @notice Generates an array of random values for a specific token
-     * @param tokenId The ID of the token to generate values for
-     * @return An array of random values between 1 and MAX_RANDOM_VALUE
+     * @notice Updates random seeds after the required interval
+     * @dev Can be called by upkeep address or owner
+     *      Generates new seed, updates array, and increments iteration
      */
-    function generateValuesFromSeeds(uint256 tokenId) 
-        external 
-        view 
-        returns (uint8[VALUES_ARRAY_SIZE] memory) 
-    {
-        uint256 mintIteration = _tokenMintIteration[tokenId];
-        
-        // If not a special token, generate normally
-        if (mintIteration == 0) {
-            return _generateNewValues(tokenId);
-        }
-        
-        // For special tokens, calculate values based on future seeds
-        uint8[VALUES_ARRAY_SIZE] memory values;
-        uint256 iterationsSinceMint = _currentIteration - mintIteration;
-        
-        for (uint256 i = 0; i < VALUES_ARRAY_SIZE; i++) {
-            if (i < iterationsSinceMint && i < VALUES_ARRAY_SIZE) {
-                // Calculate the correct index for the seed
-                uint256 seedIndex = VALUES_ARRAY_SIZE - 1 - (iterationsSinceMint - 1 - i);
-                if (seedIndex < VALUES_ARRAY_SIZE) {
-                    bytes32 seed = _randomSeeds[seedIndex];
-                    if (seed != 0) {
-                        values[i] = _generateSingleValue(seed, tokenId);
-                    }
-                }
-            }
-        }
-        
-        return values;
-    }
-
-    /**
-     * @notice Updates the random seeds after a specific time interval
-     * @dev Can only be called once the interval has passed since last update
-     */
-    function updateDailySeeds() external onlyUpkeepOrOwner {
+    function updateRandomSeeds() external onlyUpkeepOrOwner {
         uint256 currentTime = block.timestamp;
         uint256 timeSinceLastUpdate = currentTime - _lastUpdateBlock;
         
-        require(
-            timeSinceLastUpdate >= s_requiredInterval,
-            "Not enough time has passed since last update"
-        );
+        if (timeSinceLastUpdate < _requiredInterval) {
+            revert InsufficientTimePassed();
+        }
         
-        bytes32 newSeed = _getNewRandomSeed();
+        bytes32 newSeed = Utils.getNewRandomSeed();
         _updateRandomSeeds(newSeed);
         _lastUpdateBlock = currentTime;
         _currentIteration++;
@@ -109,21 +207,51 @@ contract ValueGenerator is IValueGenerator, Ownable {
     }
 
     /**
-     * @notice Returns the current array of random seeds
-     * @return Array of random seeds
+     * @notice Generates random values for a specific token
+     * @dev Values depend on token's mint iteration and current seeds
+     *      Default tokens (iteration 0) use current seeds
+     *      Special tokens use seeds that became available after minting
+     * @param tokenId The token ID to generate values for
+     * @return Array of VALUES_ARRAY_SIZE random values between 1 and MAX_RANDOM_VALUE
      */
-    function getRandomSeeds() external view returns (bytes32[SEED_ARRAY_SIZE] memory) {
-        return _randomSeeds;
+    function generateValuesFromSeeds(uint256 tokenId) 
+        external 
+        view 
+        returns (uint8[VALUES_ARRAY_SIZE] memory) 
+    {
+        uint256 mintIteration = _tokenMintIteration[tokenId];
+        
+        if (mintIteration == 0) {
+            return _generateValuesForDefaultToken(tokenId);
+        }
+        
+        return _generateValuesForSpecialToken(tokenId, mintIteration);
     }
 
-    // Internal functions
+    /*************************************/
+    /*              Internal             */
+    /*************************************/
+    /**
+     * @notice Updates the random seeds array with a new seed
+     * @dev Either fills empty slot or shifts array and adds to end
+     * @param newSeed The new seed to add to the array
+     */
+    function _updateRandomSeeds(bytes32 newSeed) private {
+        uint256 emptySlot = ArrayUtils.findEmptySlot(_randomSeeds);
+        if (emptySlot < SEED_ARRAY_SIZE) {
+            _randomSeeds[emptySlot] = newSeed;
+        } else {
+            ArrayUtils.shiftAndUpdate(_randomSeeds, newSeed);
+        }
+    }
 
     /**
-     * @dev Generates an array of random values using stored seeds and token ID
-     * @param tokenId The token ID to use in value generation
-     * @return Array of generated random values
+     * @notice Generates values for default tokens (iteration 0)
+     * @dev Uses current seeds to generate values
+     * @param tokenId The token ID to generate values for
+     * @return Array of generated values
      */
-    function _generateNewValues(uint256 tokenId) 
+    function _generateValuesForDefaultToken(uint256 tokenId) 
         private 
         view 
         returns (uint8[VALUES_ARRAY_SIZE] memory) 
@@ -139,10 +267,41 @@ contract ValueGenerator is IValueGenerator, Ownable {
     }
 
     /**
-     * @dev Generates a single random value from a seed and token ID
-     * @param seed Random seed to use
-     * @param tokenId Token ID to combine with seed
-     * @return A random value between 1 and MAX_RANDOM_VALUE
+     * @notice Generates values for special tokens based on future seeds
+     * @dev Uses seeds that became available after token was minted
+     * @param tokenId The token ID to generate values for
+     * @param mintIteration The iteration when the token was minted
+     * @return Array of generated values
+     */
+    function _generateValuesForSpecialToken(uint256 tokenId, uint256 mintIteration) 
+        private 
+        view 
+        returns (uint8[VALUES_ARRAY_SIZE] memory) 
+    {
+        uint8[VALUES_ARRAY_SIZE] memory values;
+        uint256 iterationsSinceMint = _currentIteration - mintIteration;
+        
+        for (uint256 i = 0; i < VALUES_ARRAY_SIZE; i++) {
+            if (i < iterationsSinceMint && i < VALUES_ARRAY_SIZE) {
+                uint256 seedIndex = VALUES_ARRAY_SIZE - 1 - (iterationsSinceMint - 1 - i);
+                if (seedIndex < VALUES_ARRAY_SIZE) {
+                    bytes32 seed = _randomSeeds[seedIndex];
+                    if (seed != 0) {
+                        values[i] = _generateSingleValue(seed, tokenId);
+                    }
+                }
+            }
+        }
+        
+        return values;
+    }
+
+    /**
+     * @notice Generates a single random value from a seed and token ID
+     * @dev Combines seed and tokenId to generate deterministic but random value
+     * @param seed The seed to use for generation
+     * @param tokenId The token ID to generate value for
+     * @return Random value between 1 and MAX_RANDOM_VALUE
      */
     function _generateSingleValue(bytes32 seed, uint256 tokenId) 
         private 
@@ -153,71 +312,13 @@ contract ValueGenerator is IValueGenerator, Ownable {
         return uint8((uint256(combinedSeed) % Constants.MAX_RANDOM_VALUE) + 1);
     }
 
-    /**
-     * @dev Gets a new random seed from the previous block hash
-     * @return A random seed derived from the previous block hash
-     */
-    function _getNewRandomSeed() private view returns (bytes32) {
-        if (block.number == 0) revert InvalidBlockHash();
-        
-        bytes32 previousBlockHash = blockhash(block.number - 1);
-        if (previousBlockHash == bytes32(0)) revert InvalidBlockHash();
-        
-        return previousBlockHash;
-    }
-
-    /**
-     * @dev Updates the random seeds array with a new seed
-     * @param newSeed The new seed to add to the array
-     */
-    function _updateRandomSeeds(bytes32 newSeed) private {
-        uint256 emptySlot = _findEmptySlot();
-        if (emptySlot < SEED_ARRAY_SIZE) {
-            _randomSeeds[emptySlot] = newSeed;
-        } else {
-            _shiftAndUpdateSeeds(newSeed);
-        }
-    }
-
-    /**
-     * @dev Finds the first empty slot in the seeds array
-     * @return Index of the first empty slot, or SEED_ARRAY_SIZE if none found
-     */
-    function _findEmptySlot() private view returns (uint256) {
-        for (uint256 i = 0; i < SEED_ARRAY_SIZE; i++) {
-            if (_randomSeeds[i] == 0) return i;
-        }
-        return SEED_ARRAY_SIZE;
-    }
-
-    /**
-     * @dev Shifts all seeds left and adds new seed at the end
-     * @param newSeed The new seed to add at the end of the array
-     */
-    function _shiftAndUpdateSeeds(bytes32 newSeed) private {
-        for (uint256 i = 0; i < SEED_ARRAY_SIZE - 1; i++) {
-            _randomSeeds[i] = _randomSeeds[i + 1];
-        }
-        _randomSeeds[SEED_ARRAY_SIZE - 1] = newSeed;
-    }
-
-    function getCurrentIteration() external view returns (uint256) {
-        return _currentIteration;
-    }
-    
-    function getTokenMintIteration(uint256 tokenId) external view returns (uint256) {
-        return _tokenMintIteration[tokenId];
-    }
-
-    function setRequiredInterval(uint256 newInterval) external onlyOwner {
-        require(newInterval > 0, "Interval must be greater than 0");
-        s_requiredInterval = newInterval;
-    }
-
-    // TESTING FUNCTIONS
+    /*************************************/
+    /*              Test Functions       */
+    /*************************************/
     /**
      * @notice Test function to set predetermined seeds
-     * @dev Should only be used for testing purposes
+     * @dev ONLY FOR TESTING - Sets known seeds and advances iteration
+     *      Should never be used in production
      */
     function fastForwardDays() external {
         _randomSeeds[0] = 0x0000000000000000000000000000000000000000000000000000000000000001;
@@ -228,7 +329,7 @@ contract ValueGenerator is IValueGenerator, Ownable {
         _randomSeeds[5] = 0x0000000000000000000000000000000000000000000000000000000000000006;
         _randomSeeds[6] = 0x0000000000000000000000000000000000000000000000000000000000000007;
 
-        _currentIteration+=7;
+        _currentIteration += 7;
         _lastUpdateBlock = block.timestamp;
     }
 }

@@ -51,7 +51,7 @@ contract DeployAndConfigureExampleToken is Script {
         // Deploy ValueGenerator
         valueGenerator = new ValueGenerator();
 
-        valueGenerator.setForwarderAddress(chainlinkForwarder);
+        valueGenerator.setUpkeepAddress(chainlinkForwarder);
 
         // Deploy MetadataGenerator
         metadataGenerator = new MetadataGenerator();
@@ -65,6 +65,9 @@ contract DeployAndConfigureExampleToken is Script {
 
         // Set the MetadataRenderer in the NFT contract
         token.setMetadataRenderer(address(renderer));
+
+        // Set the MetadataRenderer in the ValueGenerator contract
+        valueGenerator.setMetadataRenderer(address(renderer));
 
         // Configure the token
         token.setMaxSupply(maxSupply);

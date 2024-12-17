@@ -22,4 +22,20 @@ library Utils {
         str[1] = hexChars[b & 0x0f];
         return string(str);
     }
+
+    /**
+     * @notice Retrieves the previous block hash as a random seed
+     * @return The previous block hash
+     */
+    function getNewRandomSeed() internal view returns (bytes32) {
+        if (block.number == 0) revert InvalidBlockHash();
+        
+        bytes32 previousBlockHash = blockhash(block.number - 1);
+        if (previousBlockHash == bytes32(0)) revert InvalidBlockHash();
+        
+        return previousBlockHash;
+    }
+
+    // Don't forget to add the error at the library level
+    error InvalidBlockHash();
 }

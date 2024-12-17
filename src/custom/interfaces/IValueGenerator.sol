@@ -3,7 +3,7 @@ pragma solidity 0.8.17;
 
 interface IValueGenerator {
     function generateValuesFromSeeds(uint256 tokenId) external view returns (uint8[7] memory);
-    function updateDailySeeds() external;
+    function updateRandomSeeds() external;
     function getRandomSeeds() external view returns (bytes32[7] memory);
     function setTokenMintIteration(uint256 tokenId) external;
     function getCurrentIteration() external view returns (uint256);
