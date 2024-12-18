@@ -2,20 +2,21 @@
 pragma solidity 0.8.17;
 
 import { ERC721SeaDrop } from "../ERC721SeaDrop.sol";
-import { MetadataRenderer } from "./MetadataRenderer.sol";
+import { IMetadataRenderer } from "./interfaces/IMetadataRenderer.sol";
 import { Constants } from "./libraries/Constants.sol";
+import "./interfaces/IChartsErrors.sol";
 
 /**
  * @title ChartsERC721SeaDrop
  * @notice Handles NFT minting, metadata rendering, and palette conversions
  * @dev Extends ERC721SeaDrop to add custom metadata handling and token conversion mechanics
  */
-contract ChartsERC721SeaDrop is ERC721SeaDrop {
+contract ChartsERC721SeaDrop is ERC721SeaDrop, IChartsErrors {
     /*************************************/
     /*              Storage              */
     /*************************************/
     /// @notice The metadata renderer contract that generates token URIs and handles metadata
-    MetadataRenderer public metadataRenderer;
+    IMetadataRenderer public metadataRenderer;
 
     /// @notice Mapping of palette conversions
     mapping(uint8 => PaletteConversion) public paletteConversions;
@@ -74,7 +75,7 @@ contract ChartsERC721SeaDrop is ERC721SeaDrop {
         
         paletteConversions[Constants.PALETTE_GREYSCALE] = PaletteConversion({
             requiredPalette: Constants.PALETTE_PASTEL,
-            resultPalette: Constants.PALETTE_GREYSCALE,
+            resultPalette: 0,
             requiredTokenCount: 2
         });
     }
@@ -88,9 +89,11 @@ contract ChartsERC721SeaDrop is ERC721SeaDrop {
      * @dev Only callable by contract owner
      */
     function setMetadataRenderer(address _renderer) external onlyOwner {
-        require(_renderer != address(0), "Zero address not allowed");
+        if (_renderer == address(0)) {
+            revert InvalidAddress(_renderer, "Zero address not allowed");
+        }
         address oldRenderer = address(metadataRenderer);
-        metadataRenderer = MetadataRenderer(_renderer);
+        metadataRenderer = IMetadataRenderer(_renderer);
         emit MetadataRendererUpdated(oldRenderer, _renderer);
     }
 
@@ -134,6 +137,11 @@ contract ChartsERC721SeaDrop is ERC721SeaDrop {
             );
         }
 
+        // Check if the metadata renderer is set
+        if (address(metadataRenderer) == address(0)) {
+            revert MetadataError("Renderer not set");
+        }
+
         // Mint the quantity of tokens to the minter
         _safeMint(minter, quantity);
 
@@ -150,17 +158,24 @@ contract ChartsERC721SeaDrop is ERC721SeaDrop {
      * @dev Can only be called by the token owner
      */
     function lockTokenValues(uint256 tokenId) external nonReentrant {
-        // Check that the token exists and sender is the owner
-        if (!_exists(tokenId)) revert URIQueryForNonexistentToken();
-        require(ownerOf(tokenId) == msg.sender, "Not token owner");
-
-        // Check that metadata renderer is set
-        require(address(metadataRenderer) != address(0), "Metadata renderer not set");
+        if (!_exists(tokenId)) {
+            revert TokenError(tokenId, "Token does not exist");
+        }
+        if (ownerOf(tokenId) != msg.sender) {
+            revert NotTokenOwner(msg.sender, tokenId, ownerOf(tokenId));
+        }
+        if (address(metadataRenderer) == address(0)) {
+            revert MetadataError("Renderer not set");
+        }
 
         // Call the metadata renderer's lock function
-        metadataRenderer.lockTokenValues(tokenId);
-
-        emit TokenValuesLocked(tokenId, msg.sender);
+        try metadataRenderer.lockTokenValues(tokenId) {
+            emit TokenValuesLocked(tokenId, msg.sender);
+        } catch Error(string memory reason) {
+            revert MetadataError(reason);
+        } catch {
+            revert MetadataError("Lock operation failed");
+        }
     }
 
     /**
@@ -174,25 +189,43 @@ contract ChartsERC721SeaDrop is ERC721SeaDrop {
         external
         nonReentrant
     {
-        // Validate input array length early
-        require(tokenIds.length > 0, "Empty token array");
-        require(tokenIds.length <= 4, "Too many tokens"); // Max possible is 4 for chromatic
-
-        PaletteConversion memory conversion = paletteConversions[targetPalette];
-        require(conversion.resultPalette != 0, "Conversion not available");
-        require(tokenIds.length == conversion.requiredTokenCount, 
-            "Invalid number of tokens");
-            
-        // Pre-validate all tokens exist and are owned by sender
-        for (uint256 i = 0; i < tokenIds.length; i++) {
-            require(_exists(tokenIds[i]), "Token does not exist");
-            require(ownerOf(tokenIds[i]) == msg.sender, "Not token owner");
+        // Check tokenIds length
+        if (tokenIds.length == 0 || tokenIds.length > 4) {
+            revert InvalidTokenInput(tokenIds, "Must provide 1-4 tokens");
         }
 
-        // Check for duplicate token IDs using more gas-efficient approach
+        // Check if conversion is available
+        PaletteConversion memory conversion = paletteConversions[targetPalette];
+        if (conversion.resultPalette == 0) {
+            revert ConversionError(0, targetPalette, "Conversion not available");
+        }
+
+        // Check if the correct number of tokens are provided
+        if (tokenIds.length != conversion.requiredTokenCount) {
+            revert InvalidTokenInput(
+                tokenIds, 
+                "Wrong number of tokens for conversion"
+            );
+        }
+        
+        // Check all tokens exist and are owned by sender
+        for (uint256 i = 0; i < tokenIds.length; i++) {
+            if (!_exists(tokenIds[i])) {
+                revert TokenError(tokenIds[i], "Token does not exist");
+            }
+            if (ownerOf(tokenIds[i]) != msg.sender) {
+                revert NotTokenOwner(msg.sender, tokenIds[i], ownerOf(tokenIds[i]));
+            }
+        }
+
+        // Check for duplicate token IDs
         if (tokenIds.length > 1) {
-            for (uint256 i = 1; i < tokenIds.length; i++) {
-                require(tokenIds[i] > tokenIds[i-1], "Tokens must be sorted");
+            for (uint256 i = 0; i < tokenIds.length - 1; i++) {
+                for (uint256 j = i + 1; j < tokenIds.length; j++) {
+                    if (tokenIds[i] == tokenIds[j]) {
+                        revert TokenError(tokenIds[i], "Duplicate token ID");
+                    }
+                }
             }
         }
 
@@ -213,7 +246,9 @@ contract ChartsERC721SeaDrop is ERC721SeaDrop {
 
         metadataRenderer.setSpecialToken(newTokenId, conversion.resultPalette);
 
-        require(metadataRenderer.getIsSpecialToken(newTokenId), "New token is not a special token");
+        if (!metadataRenderer.getIsSpecialToken(newTokenId)) {
+            revert TokenError(newTokenId, "New token is not a special token");
+        }
 
         emit TokensConverted(tokenIds, newTokenId, targetPalette);
     }
@@ -223,16 +258,28 @@ contract ChartsERC721SeaDrop is ERC721SeaDrop {
         bool[4] memory basepalettesFound;
         for (uint256 i = 0; i < tokenIds.length; i++) {
             uint8 tokenPalette = metadataRenderer.getTokenPalette(tokenIds[i]);
-            require(tokenPalette < Constants.PALETTE_CHROMATIC, 
-                "Invalid token palette");
-            require(!basepalettesFound[tokenPalette], 
-                "Duplicate palette");
+            if (tokenPalette >= Constants.PALETTE_CHROMATIC) {
+                revert InvalidPalette(tokenPalette, "Must be base palette");
+            }
+            if (basepalettesFound[tokenPalette]) {
+                revert ConversionError(
+                    tokenPalette,
+                    Constants.PALETTE_CHROMATIC,
+                    "Duplicate palette"
+                );
+            }
             basepalettesFound[tokenPalette] = true;
         }
         
         // Verify all palettes were found
         for (uint256 i = 0; i < 4; i++) {
-            require(basepalettesFound[i], "Missing required palette");
+            if (!basepalettesFound[i]) {
+                revert ConversionError(
+                    uint8(i),
+                    Constants.PALETTE_CHROMATIC,
+                    "Missing required palette"
+                );
+            }
         }
     }
 
@@ -243,8 +290,13 @@ contract ChartsERC721SeaDrop is ERC721SeaDrop {
     ) private view {
         for (uint256 i = 0; i < tokenIds.length; i++) {
             uint8 tokenPalette = metadataRenderer.getTokenPalette(tokenIds[i]);
-            require(tokenPalette == requiredPalette, 
-                "Wrong palette for conversion");
+            if (tokenPalette != requiredPalette) {
+                revert ConversionError(
+                    tokenPalette,
+                    requiredPalette,
+                    "Wrong palette for conversion"
+                );
+            }
         }
     }
 }

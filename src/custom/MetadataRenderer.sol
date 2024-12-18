@@ -7,13 +7,14 @@ import { Constants } from "./libraries/Constants.sol";
 import { IValueGenerator } from "./interfaces/IValueGenerator.sol";
 import { ArrayUtils } from "./libraries/ArrayUtils.sol";
 import { MetadataUtils } from "./libraries/MetadataUtils.sol";
+import { IMetadataRenderer } from "./interfaces/IMetadataRenderer.sol";
 
 /**
  * @title MetadataRenderer
  * @notice Handles the generation and management of NFT metadata, including values and palettes
  * @dev This contract works in conjunction with a value generator
  */
-contract MetadataRenderer {
+contract MetadataRenderer is IMetadataRenderer {
     using Strings for uint256;
     using ArrayUtils for uint8[7];
 
