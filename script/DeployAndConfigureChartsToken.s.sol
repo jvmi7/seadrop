@@ -2,15 +2,15 @@
 pragma solidity 0.8.17;
 
 import "forge-std/Script.sol";
-import { ERC721SeaDropCustom } from "../src/custom/ERC721SeaDropCustom.sol";
+import { ChartsERC721SeaDrop } from "../src/custom/ChartsERC721SeaDrop.sol";
 import { MetadataRenderer } from "../src/custom/MetadataRenderer.sol";
-import { ValueGenerator } from "../src/custom/generators/ValueGenerator.sol";
+import { ValueGenerator } from "../src/custom/ValueGenerator.sol";
 import { ISeaDrop } from "../src/interfaces/ISeaDrop.sol";
 import { PublicDrop } from "../src/lib/SeaDropStructs.sol";
 import { Strings } from "openzeppelin-contracts/utils/Strings.sol";
 import { Constants } from "../src/custom/libraries/Constants.sol";
 
-contract DeployAndConfigureExampleToken is Script {
+contract DeployAndConfigureChartsToken is Script {
     using Strings for uint256;
     
     // Addresses
@@ -27,7 +27,7 @@ contract DeployAndConfigureExampleToken is Script {
     uint80 mintPrice = 0.0000 ether;
     uint16 maxTotalMintableByWallet = 100;
 
-    ERC721SeaDropCustom token;
+    ChartsERC721SeaDrop token;
     ValueGenerator valueGenerator;
     MetadataRenderer renderer;
 
@@ -40,7 +40,7 @@ contract DeployAndConfigureExampleToken is Script {
         allowedSeadrop[0] = seadrop;
 
         // Deploy NFT contract
-        token = new ERC721SeaDropCustom(
+        token = new ChartsERC721SeaDrop(
             "Example Token",
             "ExTKN",
             allowedSeadrop

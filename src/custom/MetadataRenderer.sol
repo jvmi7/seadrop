@@ -54,6 +54,7 @@ contract MetadataRenderer {
     error OnlyNFTContract();
     error TokenAlreadyLocked();
     error ValuesNotReadyForLocking(string message);
+    error InvalidSpecialPalette();
 
     /*************************************/
     /*              Constructor          */
@@ -133,7 +134,7 @@ contract MetadataRenderer {
      * @dev Only callable by NFT contract and requires special palette range
      */
     function setSpecialToken(uint256 tokenId, uint8 palette) external onlyNFTContract {
-        require(palette >= Constants.PALETTE_CHROMATIC, "Not a special palette");
+        if (palette < Constants.PALETTE_CHROMATIC) revert InvalidSpecialPalette();
         _isSpecialToken[tokenId] = true;
         _tokenPalettes[tokenId] = palette;
         valueGenerator.setTokenMintIteration(tokenId);

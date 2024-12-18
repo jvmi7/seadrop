@@ -6,11 +6,11 @@ import { MetadataRenderer } from "./MetadataRenderer.sol";
 import { Constants } from "./libraries/Constants.sol";
 
 /**
- * @title ERC721SeaDropCustom
+ * @title ChartsERC721SeaDrop
  * @notice Handles NFT minting, metadata rendering, and palette conversions
  * @dev Extends ERC721SeaDrop to add custom metadata handling and token conversion mechanics
  */
-contract ERC721SeaDropCustom is ERC721SeaDrop {
+contract ChartsERC721SeaDrop is ERC721SeaDrop {
     /*************************************/
     /*              Storage              */
     /*************************************/
