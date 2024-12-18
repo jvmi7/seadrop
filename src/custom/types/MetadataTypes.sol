@@ -2,10 +2,7 @@
 pragma solidity 0.8.17;
 
 struct TokenMetadata {
-    string name;
-    string description;
-    string image;
-    string animationUrl;
+    uint256 id;
     uint8[7] values;
     uint8 palette;
     bool isLocked;

@@ -6,6 +6,18 @@ pragma solidity 0.8.17;
  * @notice A library containing general utility functions
  */
 library Utils {
+
+    /*************************************/
+    /*              Errors               */
+    /*************************************/
+    
+    /// @notice Thrown when block hash is invalid or zero
+    error InvalidBlockHash();
+
+    /*************************************/
+    /*              Functions            */
+    /*************************************/
+
     /**
      * @notice Converts a byte to its hex string representation
      * @param b The byte to convert
@@ -35,7 +47,4 @@ library Utils {
         
         return previousBlockHash;
     }
-
-    // Don't forget to add the error at the library level
-    error InvalidBlockHash();
 }

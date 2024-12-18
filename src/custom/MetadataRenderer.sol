@@ -5,30 +5,32 @@ import { Strings } from "openzeppelin-contracts/utils/Strings.sol";
 import { TokenMetadata } from "./types/MetadataTypes.sol";
 import { Constants } from "./libraries/Constants.sol";
 import { IValueGenerator } from "./interfaces/IValueGenerator.sol";
-import { IMetadataGenerator } from "./interfaces/IMetadataGenerator.sol";
 import { ArrayUtils } from "./libraries/ArrayUtils.sol";
+import { MetadataUtils } from "./libraries/MetadataUtils.sol";
 
 /**
  * @title MetadataRenderer
  * @notice Handles the generation and management of NFT metadata, including values and palettes
- * @dev This contract works in conjunction with a value generator and metadata generator
+ * @dev This contract works in conjunction with a value generator
  */
 contract MetadataRenderer {
     using Strings for uint256;
     using ArrayUtils for uint8[7];
 
-    // Constants
+    /*************************************/
+    /*              Constants            */
+    /*************************************/
+    /// @notice Size of the values array for each token
     uint256 private constant VALUES_ARRAY_SIZE = 7;
 
-    // State variables
+    /*************************************/
+    /*              Storage              */
+    /*************************************/
     /// @notice Address of the NFT contract that this renderer serves
     address public immutable nftContract;
     /// @notice Contract that generates the token values
     IValueGenerator public immutable valueGenerator;
-    /// @notice Contract that generates the final metadata
-    IMetadataGenerator public immutable metadataGenerator;
 
-    // Mappings
     /// @notice Maps token IDs to their color palettes
     mapping(uint256 => uint8) private _tokenPalettes;
     /// @notice Tracks whether a token's values are locked
@@ -38,39 +40,84 @@ contract MetadataRenderer {
     /// @notice Tracks whether a token is a special token
     mapping(uint256 => bool) private _isSpecialToken;
 
-    // Events
+    /*************************************/
+    /*              Events               */
+    /*************************************/
     /// @notice Emitted when a token's metadata is updated
     event MetadataUpdated(uint256 indexed tokenId);
     /// @notice Emitted when a token's values are locked
     event TokenLocked(uint256 indexed tokenId);
 
-    // Errors
+    /*************************************/
+    /*              Errors               */
+    /*************************************/
     error OnlyNFTContract();
     error TokenAlreadyLocked();
     error ValuesNotReadyForLocking(string message);
 
+    /*************************************/
+    /*              Constructor          */
+    /*************************************/
     /**
      * @notice Initializes the contract with necessary dependencies
      * @param _nftContract Address of the NFT contract
      * @param _valueGenerator Address of the value generator contract
-     * @param _metadataGenerator Address of the metadata generator contract
      */
     constructor(
         address _nftContract, 
-        address _valueGenerator,
-        address _metadataGenerator
+        address _valueGenerator
     ) {
         nftContract = _nftContract;
         valueGenerator = IValueGenerator(_valueGenerator);
-        metadataGenerator = IMetadataGenerator(_metadataGenerator);
     }
 
-    /// @notice Ensures only the NFT contract can call certain functions
+    /*************************************/
+    /*              Modifiers            */
+    /*************************************/
+    /**
+     * @notice Ensures only the NFT contract can call certain functions
+     * @dev Used for functions that manage token metadata
+     */
     modifier onlyNFTContract() {
         if (msg.sender != nftContract) revert OnlyNFTContract();
         _;
     }
 
+    /*************************************/
+    /*              Getters              */
+    /*************************************/
+    /**
+     * @notice Gets the palette of a token
+     * @param tokenId The ID of the token to get the palette for
+     * @return The palette of the token
+     */
+    function getTokenPalette(uint256 tokenId) external view returns (uint8) {
+        return _tokenPalettes[tokenId];
+    }
+
+    /**
+     * @notice Checks if a token is marked as special
+     * @param tokenId The ID of the token to check
+     * @return Boolean indicating if the token is special
+     */
+    function getIsSpecialToken(uint256 tokenId) external view returns (bool) {
+        return _isSpecialToken[tokenId];
+    }
+    
+    /**
+     * @notice Gets the number of revealed values for a token
+     * @param tokenId The ID of the token to check
+     * @return Number of revealed values
+     */
+    function getRevealedValuesCount(uint256 tokenId) external view returns (uint256) {
+        if (!_isSpecialToken[tokenId]) return VALUES_ARRAY_SIZE;
+        return valueGenerator.getCurrentIteration() - 
+               valueGenerator.getTokenMintIteration(tokenId);
+    }
+
+    /*************************************/
+    /*              Setters              */
+    /*************************************/
     /**
      * @notice Sets the initial metadata for a newly minted token
      * @param tokenId The ID of the token to set metadata for
@@ -79,6 +126,22 @@ contract MetadataRenderer {
         _tokenPalettes[tokenId] = _calculateInitialPalette(tokenId);
     }
 
+    /**
+     * @notice Sets a token as a special token with a specific palette
+     * @param tokenId The ID of the token to set as special
+     * @param palette The palette of the special token
+     * @dev Only callable by NFT contract and requires special palette range
+     */
+    function setSpecialToken(uint256 tokenId, uint8 palette) external onlyNFTContract {
+        require(palette >= Constants.PALETTE_CHROMATIC, "Not a special palette");
+        _isSpecialToken[tokenId] = true;
+        _tokenPalettes[tokenId] = palette;
+        valueGenerator.setTokenMintIteration(tokenId);
+    }
+
+    /*************************************/
+    /*              External             */
+    /*************************************/
     /**
      * @notice Locks a token's values permanently
      * @param tokenId The ID of the token to lock
@@ -89,7 +152,7 @@ contract MetadataRenderer {
         
         uint8[VALUES_ARRAY_SIZE] memory currentValues = valueGenerator.generateValuesFromSeeds(tokenId);
         if (!currentValues.areAllValuesNonZero()) {
-            revert ValuesNotReadyForLocking("Token values are not yet complete. Please wait for daily updates to generate all values before locking.");
+            revert ValuesNotReadyForLocking("Token cannot be locked with unrevealed values");
         }
         
         _tokenLocked[tokenId] = true;
@@ -105,9 +168,12 @@ contract MetadataRenderer {
      */
     function generateTokenURI(uint256 tokenId) external view returns (string memory) {        
         TokenMetadata memory metadata = _createTokenMetadata(tokenId);
-        return metadataGenerator.generateTokenURI(metadata);
+        return MetadataUtils.generateTokenURI(metadata);
     }
 
+    /*************************************/
+    /*              Private              */
+    /*************************************/
     /**
      * @notice Creates the metadata structure for a token
      * @param tokenId The ID of the token to create metadata for
@@ -120,13 +186,7 @@ contract MetadataRenderer {
     {
         uint8[VALUES_ARRAY_SIZE] memory values = _getValues(tokenId);
         return TokenMetadata({
-            name: metadataGenerator.generateName(tokenId),
-            description: Constants.BASE_DESCRIPTION,
-            image: metadataGenerator.generateImageURI(
-                values,
-                _tokenPalettes[tokenId]
-            ),
-            animationUrl: "",
+            id: tokenId,
             values: values,
             palette: _tokenPalettes[tokenId],
             isLocked: _tokenLocked[tokenId]
@@ -159,37 +219,5 @@ contract MetadataRenderer {
         if (mod4 < Constants.PALETTE_2_THRESHOLD) return 2;
         if (mod4 < Constants.PALETTE_3_THRESHOLD) return 3;
         return 0;
-    }
-
-    /**
-     * @notice Sets a token as a special token
-     * @param tokenId The ID of the token to set as special
-     * @param palette The palette of the special token
-     */
-    function setSpecialToken(uint256 tokenId, uint8 palette) external {
-        require(msg.sender == nftContract, "Only NFT contract");
-        require(palette >= Constants.PALETTE_CHROMATIC, "Not a special palette");
-        _isSpecialToken[tokenId] = true;
-        _tokenPalettes[tokenId] = palette;
-        valueGenerator.setTokenMintIteration(tokenId);
-    }
-
-    /**
-     * @notice Gets the palette of a token
-     * @param tokenId The ID of the token to get the palette for
-     * @return The palette of the token
-     */
-    function getTokenPalette(uint256 tokenId) external view returns (uint8) {
-        return _tokenPalettes[tokenId];
-    }
-
-    function isSpecialToken(uint256 tokenId) external view returns (bool) {
-        return _isSpecialToken[tokenId];
-    }
-    
-    function getRevealedValueCount(uint256 tokenId) external view returns (uint256) {
-        if (!_isSpecialToken[tokenId]) return VALUES_ARRAY_SIZE;
-        return valueGenerator.getCurrentIteration() - 
-               valueGenerator.getTokenMintIteration(tokenId);
     }
 }

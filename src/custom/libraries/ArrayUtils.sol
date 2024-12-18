@@ -41,4 +41,19 @@ library ArrayUtils {
         }
         arr[6] = newValue;
     }
+
+    /**
+     * @notice Gets the last non-zero value in a fixed-size array
+     * @param values An array of 7 uint8 values to check
+     * @return The last non-zero value encountered, or 0 if all values are zero
+     */
+    function getLastNonZeroValue(uint8[7] memory values) internal pure returns (uint8) {
+        uint8 lastValue = 0;
+        for (uint256 i = 0; i < 7; i++) {
+            if (values[i] != 0) {
+                lastValue = values[i];
+            }
+        }
+        return lastValue;
+    }
 }

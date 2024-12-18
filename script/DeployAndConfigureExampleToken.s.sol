@@ -8,7 +8,6 @@ import { ValueGenerator } from "../src/custom/generators/ValueGenerator.sol";
 import { ISeaDrop } from "../src/interfaces/ISeaDrop.sol";
 import { PublicDrop } from "../src/lib/SeaDropStructs.sol";
 import { Strings } from "openzeppelin-contracts/utils/Strings.sol";
-import { MetadataGenerator } from "../src/custom/generators/MetadataGenerator.sol";
 import { Constants } from "../src/custom/libraries/Constants.sol";
 
 contract DeployAndConfigureExampleToken is Script {
@@ -31,7 +30,6 @@ contract DeployAndConfigureExampleToken is Script {
     ERC721SeaDropCustom token;
     ValueGenerator valueGenerator;
     MetadataRenderer renderer;
-    MetadataGenerator metadataGenerator;
 
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
@@ -53,14 +51,12 @@ contract DeployAndConfigureExampleToken is Script {
 
         valueGenerator.setUpkeepAddress(chainlinkForwarder);
 
-        // Deploy MetadataGenerator
-        metadataGenerator = new MetadataGenerator();
+
 
         // Deploy MetadataRenderer
         renderer = new MetadataRenderer(
             address(token),
-            address(valueGenerator),
-            address(metadataGenerator)
+            address(valueGenerator)
         );
 
         // Set the MetadataRenderer in the NFT contract
@@ -177,7 +173,6 @@ contract DeployAndConfigureExampleToken is Script {
         console.log("=== Deployed Contract Addresses ===");
         console.log("NFT Token:", address(token));
         console.log("ValueGenerator:", address(valueGenerator));
-        console.log("MetadataGenerator:", address(metadataGenerator));
         console.log("MetadataRenderer:", address(renderer));
         console.log("=== Configuration Addresses ===");
         console.log("SeaDrop:", seadrop);
