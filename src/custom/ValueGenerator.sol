@@ -178,6 +178,16 @@ contract ValueGenerator is IValueGenerator, Ownable {
         _tokenMintIteration[tokenId] = _currentIteration;
     }
 
+    /**
+     * @notice Sets the required interval between updates
+     * @dev Only callable by contract owner
+     * @param interval New interval in seconds
+     */
+    function setRequiredInterval(uint256 interval) external onlyOwner {
+        if (interval == 0) revert InvalidInterval();
+        _requiredInterval = interval;
+    }
+
     /*************************************/
     /*              External             */
     /*************************************/
