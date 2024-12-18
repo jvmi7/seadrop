@@ -20,12 +20,12 @@ contract DeployAndConfigureChartsToken is Script {
     address chainlinkForwarder = 0x586E12fa9369D1496870E16933C35a8Ba1292007;
     
     // Token config
-    uint256 maxSupply = 1000;
+    uint256 maxSupply = 10_000;
 
     // Drop config
     uint16 feeBps = 500; // 5%
     uint80 mintPrice = 0.0000 ether;
-    uint16 maxTotalMintableByWallet = 1000;
+    uint16 maxTotalMintableByWallet = 10_000;
 
     ChartsERC721SeaDrop token;
     ValueGenerator valueGenerator;
@@ -83,88 +83,47 @@ contract DeployAndConfigureChartsToken is Script {
             )
         );
         
-        // Mint initial tokens
-        ISeaDrop(seadrop).mintPublic{ value: mintPrice * 1000 }(
-            address(token),
-            feeRecipient,
-            address(0),
-            1000 // quantity
-        );
+
+        for (uint256 i = 0; i < 10; i++) {  
+            // Mint initial tokens
+            ISeaDrop(seadrop).mintPublic{ value: mintPrice * 1_000 }(
+                address(token),
+                feeRecipient,
+                address(0),
+                1_000 // quantity
+            );
+        }
 
         
 
         // ===== CHROMATIC =====
+        uint256 numChromaticPalettes = 12;
+        uint256 numPastelPalettes = 2;
 
-        // trade in 4 tokens for a new palette
-        uint256[] memory tokenIds = new uint256[](4);
-        tokenIds[0] = 1;
-        tokenIds[1] = 2;
-        tokenIds[2] = 3;
-        tokenIds[3] = 4;
-        token.convertTokens(tokenIds, 4);
+        // Convert first 24 tokens into 6 chromatic palettes (4 tokens each)
+        for (uint256 i = 0; i < numChromaticPalettes; i++) {
+            uint256[] memory tokenIds = new uint256[](4);
+            for (uint256 j = 0; j < 4; j++) {
+                tokenIds[j] = (i * 4) + j + 1;
+            }
+            token.convertTokens(tokenIds, 4);
+        }
 
-        // trade in 4 tokens for a new palette
-        uint256[] memory tokenIds1 = new uint256[](4);
-        tokenIds1[0] = 5;
-        tokenIds1[1] = 6;
-        tokenIds1[2] = 7;
-        tokenIds1[3] = 8;
-        token.convertTokens(tokenIds1, 4);
-
-        // trade in 4 tokens for a new palette
-        uint256[] memory tokenIds2 = new uint256[](4);
-        tokenIds2[0] = 9;
-        tokenIds2[1] = 10;
-        tokenIds2[2] = 11;
-        tokenIds2[3] = 12;
-        token.convertTokens(tokenIds2, 4);
-
-        // trade in 4 tokens for a new palette
-        uint256[] memory tokenIds3 = new uint256[](4);
-        tokenIds3[0] = 13;
-        tokenIds3[1] = 14;
-        tokenIds3[2] = 15;
-        tokenIds3[3] = 16;
-        token.convertTokens(tokenIds3, 4);
-
-        // trade in 4 tokens for a new palette
-        uint256[] memory tokenIds4 = new uint256[](4);
-        tokenIds4[0] = 17;
-        tokenIds4[1] = 18;
-        tokenIds4[2] = 19;
-        tokenIds4[3] = 20;
-        token.convertTokens(tokenIds4, 4);
-
-        // trade in 4 tokens for a new palette
-        uint256[] memory tokenIds5 = new uint256[](4);
-        tokenIds5[0] = 21;
-        tokenIds5[1] = 22;
-        tokenIds5[2] = 23;
-        tokenIds5[3] = 24;
-        token.convertTokens(tokenIds5, 4);
-
-        // // ===== PASTEL =====
-
-        // trade in 4 tokens for a new palette
-        uint256[] memory tokenIds6 = new uint256[](3);
-        tokenIds6[0] = 1001;
-        tokenIds6[1] = 1002;
-        tokenIds6[2] = 1003;
-        token.convertTokens(tokenIds6, 5);
-
-        // trade in 4 tokens for a new palette
-        uint256[] memory tokenIds7 = new uint256[](3);
-        tokenIds7[0] = 1004;
-        tokenIds7[1] = 1005;
-        tokenIds7[2] = 1006;
-        token.convertTokens(tokenIds7, 5);
+        // ===== PASTEL =====
+        for (uint256 i = 0; i < numPastelPalettes; i++) {
+            uint256[] memory tokenIds = new uint256[](3);
+            for (uint256 j = 0; j < 3; j++) {
+                tokenIds[j] = (i * 3) + j + 1 + numChromaticPalettes + maxSupply;
+            }
+            token.convertTokens(tokenIds, 5);
+        }
 
         // ===== GREYSCALE =====
 
         // trade in 4 tokens for a new palette
         uint256[] memory tokenIds8 = new uint256[](2);
-        tokenIds8[0] = 1007;
-        tokenIds8[1] = 1008;
+        tokenIds8[0] = 10_007;
+        tokenIds8[1] = 10_008;
         token.convertTokens(tokenIds8, 6);
 
         vm.stopBroadcast();
