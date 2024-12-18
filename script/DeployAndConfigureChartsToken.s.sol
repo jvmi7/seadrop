@@ -20,12 +20,12 @@ contract DeployAndConfigureChartsToken is Script {
     address chainlinkForwarder = 0x586E12fa9369D1496870E16933C35a8Ba1292007;
     
     // Token config
-    uint256 maxSupply = 100;
+    uint256 maxSupply = 1000;
 
     // Drop config
     uint16 feeBps = 500; // 5%
     uint80 mintPrice = 0.0000 ether;
-    uint16 maxTotalMintableByWallet = 100;
+    uint16 maxTotalMintableByWallet = 1000;
 
     ChartsERC721SeaDrop token;
     ValueGenerator valueGenerator;
@@ -84,11 +84,11 @@ contract DeployAndConfigureChartsToken is Script {
         );
         
         // Mint initial tokens
-        ISeaDrop(seadrop).mintPublic{ value: mintPrice * 100 }(
+        ISeaDrop(seadrop).mintPublic{ value: mintPrice * 1000 }(
             address(token),
             feeRecipient,
             address(0),
-            100 // quantity
+            1000 // quantity
         );
 
         
@@ -143,28 +143,28 @@ contract DeployAndConfigureChartsToken is Script {
         tokenIds5[3] = 24;
         token.convertTokens(tokenIds5, 4);
 
-        // ===== PASTEL =====
+        // // ===== PASTEL =====
 
         // trade in 4 tokens for a new palette
         uint256[] memory tokenIds6 = new uint256[](3);
-        tokenIds6[0] = 101;
-        tokenIds6[1] = 102;
-        tokenIds6[2] = 103;
+        tokenIds6[0] = 1001;
+        tokenIds6[1] = 1002;
+        tokenIds6[2] = 1003;
         token.convertTokens(tokenIds6, 5);
 
         // trade in 4 tokens for a new palette
         uint256[] memory tokenIds7 = new uint256[](3);
-        tokenIds7[0] = 104;
-        tokenIds7[1] = 105;
-        tokenIds7[2] = 106;
+        tokenIds7[0] = 1004;
+        tokenIds7[1] = 1005;
+        tokenIds7[2] = 1006;
         token.convertTokens(tokenIds7, 5);
 
         // ===== GREYSCALE =====
 
         // trade in 4 tokens for a new palette
         uint256[] memory tokenIds8 = new uint256[](2);
-        tokenIds8[0] = 107;
-        tokenIds8[1] = 108;
+        tokenIds8[0] = 1007;
+        tokenIds8[1] = 1008;
         token.convertTokens(tokenIds8, 6);
 
         vm.stopBroadcast();

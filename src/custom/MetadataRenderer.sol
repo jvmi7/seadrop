@@ -42,14 +42,6 @@ contract MetadataRenderer is IMetadataRenderer {
     mapping(uint256 => bool) private _isSpecialToken;
 
     /*************************************/
-    /*              Events               */
-    /*************************************/
-    /// @notice Emitted when a token's metadata is updated
-    event MetadataUpdated(uint256 indexed tokenId);
-    /// @notice Emitted when a token's values are locked
-    event TokenLocked(uint256 indexed tokenId);
-
-    /*************************************/
     /*              Errors               */
     /*************************************/
     error OnlyNFTContract();
@@ -135,7 +127,7 @@ contract MetadataRenderer is IMetadataRenderer {
      * @dev Only callable by NFT contract and requires special palette range
      */
     function setSpecialToken(uint256 tokenId, uint8 palette) external onlyNFTContract {
-        if (palette < Constants.PALETTE_CHROMATIC) revert InvalidSpecialPalette();
+        if (palette < Constants.CHROMATIC) revert InvalidSpecialPalette();
         _isSpecialToken[tokenId] = true;
         _tokenPalettes[tokenId] = palette;
         valueGenerator.setTokenMintIteration(tokenId);
@@ -214,12 +206,7 @@ contract MetadataRenderer is IMetadataRenderer {
      * @return Palette index (0-3)
      */
     function _calculateInitialPalette(uint256 tokenId) private pure returns (uint8) {
-        uint256 mod4 = tokenId % Constants.TOTAL_DISTRIBUTION_RANGE;
-        
-        if (mod4 < Constants.PALETTE_0_THRESHOLD) return 0;
-        if (mod4 < Constants.PALETTE_1_THRESHOLD) return 1;
-        if (mod4 < Constants.PALETTE_2_THRESHOLD) return 2;
-        if (mod4 < Constants.PALETTE_3_THRESHOLD) return 3;
-        return 0;
+        uint8 mod = uint8(tokenId % (Constants.PUNCH + 1));
+        return mod;
     }
 }

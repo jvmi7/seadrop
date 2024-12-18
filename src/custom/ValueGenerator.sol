@@ -22,10 +22,6 @@ contract ValueGenerator is IValueGenerator, Ownable {
     /// @dev Fixed size array to maintain recent random seeds
     uint256 private constant SEED_ARRAY_SIZE = 7;    
 
-    /// @notice Size of the values array generated for each token
-    /// @dev Must match SEED_ARRAY_SIZE for consistent generation
-    uint256 private constant VALUES_ARRAY_SIZE = 7;  
-
     /*************************************/
     /*              Storage             */
     /*************************************/
@@ -212,12 +208,12 @@ contract ValueGenerator is IValueGenerator, Ownable {
      *      Default tokens (iteration 0) use current seeds
      *      Special tokens use seeds that became available after minting
      * @param tokenId The token ID to generate values for
-     * @return Array of VALUES_ARRAY_SIZE random values between 1 and MAX_RANDOM_VALUE
+     * @return Array of SEED_ARRAY_SIZE random values between 1 and MAX_RANDOM_VALUE
      */
     function generateValuesFromSeeds(uint256 tokenId) 
         external 
         view 
-        returns (uint8[VALUES_ARRAY_SIZE] memory) 
+        returns (uint8[SEED_ARRAY_SIZE] memory) 
     {
         uint256 mintIteration = _tokenMintIteration[tokenId];
         
@@ -254,11 +250,11 @@ contract ValueGenerator is IValueGenerator, Ownable {
     function _generateValuesForDefaultToken(uint256 tokenId) 
         private 
         view 
-        returns (uint8[VALUES_ARRAY_SIZE] memory) 
+        returns (uint8[SEED_ARRAY_SIZE] memory) 
     {
-        uint8[VALUES_ARRAY_SIZE] memory values;
+        uint8[SEED_ARRAY_SIZE] memory values;
         
-        for (uint256 i = 0; i < VALUES_ARRAY_SIZE; i++) {
+        for (uint256 i = 0; i < SEED_ARRAY_SIZE; i++) {
             if (_randomSeeds[i] != 0) {
                 values[i] = _generateSingleValue(_randomSeeds[i], tokenId);
             }
@@ -276,15 +272,15 @@ contract ValueGenerator is IValueGenerator, Ownable {
     function _generateValuesForSpecialToken(uint256 tokenId, uint256 mintIteration) 
         private 
         view 
-        returns (uint8[VALUES_ARRAY_SIZE] memory) 
+        returns (uint8[SEED_ARRAY_SIZE] memory) 
     {
-        uint8[VALUES_ARRAY_SIZE] memory values;
+        uint8[SEED_ARRAY_SIZE] memory values;
         uint256 iterationsSinceMint = _currentIteration - mintIteration;
         
-        for (uint256 i = 0; i < VALUES_ARRAY_SIZE; i++) {
-            if (i < iterationsSinceMint && i < VALUES_ARRAY_SIZE) {
-                uint256 seedIndex = VALUES_ARRAY_SIZE - 1 - (iterationsSinceMint - 1 - i);
-                if (seedIndex < VALUES_ARRAY_SIZE) {
+        for (uint256 i = 0; i < SEED_ARRAY_SIZE; i++) {
+            if (i < iterationsSinceMint && i < SEED_ARRAY_SIZE) {
+                uint256 seedIndex = SEED_ARRAY_SIZE - 1 - (iterationsSinceMint - 1 - i);
+                if (seedIndex < SEED_ARRAY_SIZE) {
                     bytes32 seed = _randomSeeds[seedIndex];
                     if (seed != 0) {
                         values[i] = _generateSingleValue(seed, tokenId);

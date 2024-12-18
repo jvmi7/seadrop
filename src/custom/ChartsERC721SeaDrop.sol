@@ -3,8 +3,8 @@ pragma solidity 0.8.17;
 
 import { ERC721SeaDrop } from "../ERC721SeaDrop.sol";
 import { IMetadataRenderer } from "./interfaces/IMetadataRenderer.sol";
-import { Constants } from "./libraries/Constants.sol";
-import "./interfaces/IChartsErrors.sol";
+import { IChartsErrors } from "./interfaces/IChartsErrors.sol";
+import { Palettes } from "./libraries/Palettes.sol";
 
 /**
  * @title ChartsERC721SeaDrop
@@ -17,18 +17,6 @@ contract ChartsERC721SeaDrop is ERC721SeaDrop, IChartsErrors {
     /*************************************/
     /// @notice The metadata renderer contract that generates token URIs and handles metadata
     IMetadataRenderer public metadataRenderer;
-
-    /// @notice Mapping of palette conversions
-    mapping(uint8 => PaletteConversion) public paletteConversions;
-
-    /*************************************/
-    /*              Structs              */
-    /*************************************/
-    struct PaletteConversion {
-        uint8 requiredPalette;
-        uint8 resultPalette;
-        uint8 requiredTokenCount;
-    }
 
     /*************************************/
     /*              Events               */
@@ -59,26 +47,7 @@ contract ChartsERC721SeaDrop is ERC721SeaDrop, IChartsErrors {
         string memory name,
         string memory symbol,
         address[] memory allowedSeaDrop
-    ) ERC721SeaDrop(name, symbol, allowedSeaDrop) {
-        // Set up conversion rules
-        paletteConversions[Constants.PALETTE_CHROMATIC] = PaletteConversion({
-            requiredPalette: type(uint8).max,
-            resultPalette: Constants.PALETTE_CHROMATIC,
-            requiredTokenCount: 4
-        });
-        
-        paletteConversions[Constants.PALETTE_PASTEL] = PaletteConversion({
-            requiredPalette: Constants.PALETTE_CHROMATIC,
-            resultPalette: Constants.PALETTE_PASTEL,
-            requiredTokenCount: 3
-        });
-        
-        paletteConversions[Constants.PALETTE_GREYSCALE] = PaletteConversion({
-            requiredPalette: Constants.PALETTE_PASTEL,
-            resultPalette: 0,
-            requiredTokenCount: 2
-        });
-    }
+    ) ERC721SeaDrop(name, symbol, allowedSeaDrop) {}
 
     /*************************************/
     /*         External Functions        */
@@ -90,7 +59,7 @@ contract ChartsERC721SeaDrop is ERC721SeaDrop, IChartsErrors {
      */
     function setMetadataRenderer(address _renderer) external onlyOwner {
         if (_renderer == address(0)) {
-            revert InvalidAddress(_renderer, "Zero address not allowed");
+            revert InvalidAddress(_renderer);
         }
         address oldRenderer = address(metadataRenderer);
         metadataRenderer = IMetadataRenderer(_renderer);
@@ -139,7 +108,7 @@ contract ChartsERC721SeaDrop is ERC721SeaDrop, IChartsErrors {
 
         // Check if the metadata renderer is set
         if (address(metadataRenderer) == address(0)) {
-            revert MetadataError("Renderer not set");
+            revert MetadataError();
         }
 
         // Mint the quantity of tokens to the minter
@@ -159,22 +128,20 @@ contract ChartsERC721SeaDrop is ERC721SeaDrop, IChartsErrors {
      */
     function lockTokenValues(uint256 tokenId) external nonReentrant {
         if (!_exists(tokenId)) {
-            revert TokenError(tokenId, "Token does not exist");
+            revert TokenError(tokenId);
         }
         if (ownerOf(tokenId) != msg.sender) {
             revert NotTokenOwner(msg.sender, tokenId, ownerOf(tokenId));
         }
         if (address(metadataRenderer) == address(0)) {
-            revert MetadataError("Renderer not set");
+            revert MetadataError();
         }
 
         // Call the metadata renderer's lock function
         try metadataRenderer.lockTokenValues(tokenId) {
             emit TokenValuesLocked(tokenId, msg.sender);
-        } catch Error(string memory reason) {
-            revert MetadataError(reason);
         } catch {
-            revert MetadataError("Lock operation failed");
+            revert MetadataError();
         }
     }
 
@@ -182,8 +149,6 @@ contract ChartsERC721SeaDrop is ERC721SeaDrop, IChartsErrors {
      * @notice Converts tokens to a different palette by burning existing tokens and minting a new one
      * @param tokenIds Array of token IDs to convert
      * @param targetPalette The desired palette for the newly minted token
-     * @dev For chromatic conversion, requires 4 different base palette tokens
-     * @dev For other conversions, requires tokens of the same required palette
      */
     function convertTokens(uint256[] calldata tokenIds, uint8 targetPalette)
         external
@@ -191,27 +156,24 @@ contract ChartsERC721SeaDrop is ERC721SeaDrop, IChartsErrors {
     {
         // Check tokenIds length
         if (tokenIds.length == 0 || tokenIds.length > 4) {
-            revert InvalidTokenInput(tokenIds, "Must provide 1-4 tokens");
+            revert InvalidTokenInput(tokenIds);
         }
 
-        // Check if conversion is available
-        PaletteConversion memory conversion = paletteConversions[targetPalette];
+        // Get conversion rules from Palettes library
+        Palettes.PaletteConversion memory conversion = Palettes.getPaletteConversion(targetPalette);
         if (conversion.resultPalette == 0) {
-            revert ConversionError(0, targetPalette, "Conversion not available");
+            revert ConversionError(0, targetPalette);
         }
 
         // Check if the correct number of tokens are provided
         if (tokenIds.length != conversion.requiredTokenCount) {
-            revert InvalidTokenInput(
-                tokenIds, 
-                "Wrong number of tokens for conversion"
-            );
+            revert InvalidTokenInput(tokenIds);
         }
         
         // Check all tokens exist and are owned by sender
         for (uint256 i = 0; i < tokenIds.length; i++) {
             if (!_exists(tokenIds[i])) {
-                revert TokenError(tokenIds[i], "Token does not exist");
+                revert TokenError(tokenIds[i]);
             }
             if (ownerOf(tokenIds[i]) != msg.sender) {
                 revert NotTokenOwner(msg.sender, tokenIds[i], ownerOf(tokenIds[i]));
@@ -223,7 +185,7 @@ contract ChartsERC721SeaDrop is ERC721SeaDrop, IChartsErrors {
             for (uint256 i = 0; i < tokenIds.length - 1; i++) {
                 for (uint256 j = i + 1; j < tokenIds.length; j++) {
                     if (tokenIds[i] == tokenIds[j]) {
-                        revert TokenError(tokenIds[i], "Duplicate token ID");
+                        revert TokenError(tokenIds[i]);
                     }
                 }
             }
@@ -247,7 +209,7 @@ contract ChartsERC721SeaDrop is ERC721SeaDrop, IChartsErrors {
         metadataRenderer.setSpecialToken(newTokenId, conversion.resultPalette);
 
         if (!metadataRenderer.getIsSpecialToken(newTokenId)) {
-            revert TokenError(newTokenId, "New token is not a special token");
+            revert TokenError(newTokenId);
         }
 
         emit TokensConverted(tokenIds, newTokenId, targetPalette);
@@ -258,15 +220,11 @@ contract ChartsERC721SeaDrop is ERC721SeaDrop, IChartsErrors {
         bool[4] memory basepalettesFound;
         for (uint256 i = 0; i < tokenIds.length; i++) {
             uint8 tokenPalette = metadataRenderer.getTokenPalette(tokenIds[i]);
-            if (tokenPalette >= Constants.PALETTE_CHROMATIC) {
-                revert InvalidPalette(tokenPalette, "Must be base palette");
+            if (tokenPalette >= Palettes.CHROMATIC) {
+                revert InvalidPalette(tokenPalette);
             }
             if (basepalettesFound[tokenPalette]) {
-                revert ConversionError(
-                    tokenPalette,
-                    Constants.PALETTE_CHROMATIC,
-                    "Duplicate palette"
-                );
+                revert ConversionError(tokenPalette, Palettes.CHROMATIC);
             }
             basepalettesFound[tokenPalette] = true;
         }
@@ -274,11 +232,7 @@ contract ChartsERC721SeaDrop is ERC721SeaDrop, IChartsErrors {
         // Verify all palettes were found
         for (uint256 i = 0; i < 4; i++) {
             if (!basepalettesFound[i]) {
-                revert ConversionError(
-                    uint8(i),
-                    Constants.PALETTE_CHROMATIC,
-                    "Missing required palette"
-                );
+                revert ConversionError(uint8(i), Palettes.CHROMATIC);
             }
         }
     }
@@ -291,11 +245,7 @@ contract ChartsERC721SeaDrop is ERC721SeaDrop, IChartsErrors {
         for (uint256 i = 0; i < tokenIds.length; i++) {
             uint8 tokenPalette = metadataRenderer.getTokenPalette(tokenIds[i]);
             if (tokenPalette != requiredPalette) {
-                revert ConversionError(
-                    tokenPalette,
-                    requiredPalette,
-                    "Wrong palette for conversion"
-                );
+                revert ConversionError(tokenPalette, requiredPalette);
             }
         }
     }

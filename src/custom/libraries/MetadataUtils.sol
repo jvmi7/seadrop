@@ -70,7 +70,7 @@ library MetadataUtils {
         return string(
             abi.encodePacked(
                 '"name":"', generateName(metadata.id), '",',
-                '"description":"', Constants.BASE_DESCRIPTION, '",',
+                '"description":"', Constants.DESCRIPTION, '",',
                 '"image":"', generateImageURI(metadata.values, metadata.palette), '",',
                 '"animation_url":"",',
                 '"values":"', generateValueString(metadata.values), '",'
