@@ -109,24 +109,24 @@ contract DeployAndConfigureChartsToken is Script {
             token.convertTokens(tokenIds, 4);
         }
 
-        // ===== PASTEL =====
-        for (uint256 i = 0; i < numPastelPalettes; i++) {
-            uint256[] memory tokenIds = new uint256[](3);
-            for (uint256 j = 0; j < 3; j++) {
-                tokenIds[j] = (i * 3) + j + 1 + numChromaticPalettes + maxSupply;
-            }
-            token.convertTokens(tokenIds, 5);
-        }
+        // // ===== PASTEL =====
+        // for (uint256 i = 0; i < numPastelPalettes; i++) {
+        //     uint256[] memory tokenIds = new uint256[](3);
+        //     for (uint256 j = 0; j < 3; j++) {
+        //         tokenIds[j] = (i * 3) + j + 1 + numChromaticPalettes + maxSupply;
+        //     }
+        //     token.convertTokens(tokenIds, 5);
+        // }
 
         // ===== GREYSCALE =====
 
-        // trade in 4 tokens for a new palette
-        uint256[] memory tokenIds8 = new uint256[](2);
-        tokenIds8[0] = 10_007;
-        tokenIds8[1] = 10_008;
-        token.convertTokens(tokenIds8, 6);
+        // // trade in 4 tokens for a new palette
+        // uint256[] memory tokenIds8 = new uint256[](2);
+        // tokenIds8[0] = 10_007;
+        // tokenIds8[1] = 10_008;
+        // token.convertTokens(tokenIds8, 6);
 
-        vm.stopBroadcast();
+        // vm.stopBroadcast();
 
         // Print all deployed contract addresses
         console.log("=== Deployed Contract Addresses ===");

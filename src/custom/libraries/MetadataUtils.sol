@@ -72,7 +72,7 @@ library MetadataUtils {
                 '"name":"', generateName(metadata.id), '",',
                 '"description":"', Constants.DESCRIPTION, '",',
                 '"image":"', generateImageURI(metadata.values, metadata.palette), '",',
-                '"animation_url":"",',
+                '"animation_url":"https://charts-by-jvmi-jet.vercel.app/?values=[', generateValueString(metadata.values), ']&palette=', Palettes.getColorPalette(metadata.palette).name, '",',
                 '"values":"', generateValueString(metadata.values), '",'
             )
         );

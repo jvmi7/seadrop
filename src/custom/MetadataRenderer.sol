@@ -8,13 +8,14 @@ import { IValueGenerator } from "./interfaces/IValueGenerator.sol";
 import { ArrayUtils } from "./libraries/ArrayUtils.sol";
 import { MetadataUtils } from "./libraries/MetadataUtils.sol";
 import { IMetadataRenderer } from "./interfaces/IMetadataRenderer.sol";
+import { Ownable } from "openzeppelin-contracts/access/Ownable.sol";
 
 /**
  * @title MetadataRenderer
  * @notice Handles the generation and management of NFT metadata, including values and palettes
  * @dev This contract works in conjunction with a value generator
  */
-contract MetadataRenderer is IMetadataRenderer {
+contract MetadataRenderer is IMetadataRenderer, Ownable {
     using Strings for uint256;
     using ArrayUtils for uint8[7];
 
@@ -31,6 +32,8 @@ contract MetadataRenderer is IMetadataRenderer {
     address public immutable nftContract;
     /// @notice Contract that generates the token values
     IValueGenerator public immutable valueGenerator;
+    /// @notice URL for the animation
+    string public animationUrl;
 
     /// @notice Maps token IDs to their color palettes
     mapping(uint256 => uint8) private _tokenPalettes;
@@ -63,6 +66,7 @@ contract MetadataRenderer is IMetadataRenderer {
     ) {
         nftContract = _nftContract;
         valueGenerator = IValueGenerator(_valueGenerator);
+        animationUrl = Constants.ANIMATION_URL;
     }
 
     /*************************************/
@@ -109,6 +113,14 @@ contract MetadataRenderer is IMetadataRenderer {
                valueGenerator.getTokenMintIteration(tokenId);
     }
 
+    /**
+     * @notice Gets the animation URL
+     * @return The animation URL
+     */
+    function getAnimationUrl() external view returns (string memory) {
+        return animationUrl;
+    }
+
     /*************************************/
     /*              Setters              */
     /*************************************/
@@ -131,6 +143,14 @@ contract MetadataRenderer is IMetadataRenderer {
         _isSpecialToken[tokenId] = true;
         _tokenPalettes[tokenId] = palette;
         valueGenerator.setTokenMintIteration(tokenId);
+    }
+
+    /**
+     * @notice Sets the animation URL
+     * @param _animationUrl The new animation URL
+     */
+    function setAnimationUrl(string memory _animationUrl) external onlyOwner {
+        animationUrl = _animationUrl;
     }
 
     /*************************************/

@@ -28,4 +28,5 @@ library Constants {
     // NFT metadata constants
     /// @notice Default description for new NFTs
     string internal constant DESCRIPTION = "charts by jvmi";
+    string internal constant ANIMATION_URL = "https://www.jvmi.com/";
 }

@@ -61,12 +61,12 @@ contract MetadataRendererTest is Test {
 
     function setUp() public {
         nftContract = makeAddr("nftContract");
-        vm.startPrank(nftContract);
         
+        // Deploy contracts without pranking first
         valueGenerator = new MockValueGenerator();
         renderer = new MetadataRenderer(nftContract, address(valueGenerator));
         
-        vm.stopPrank();
+        // Now the test contract (address(this)) is the owner
     }
 
     function testInitialization() public {
@@ -202,5 +202,25 @@ contract MetadataRendererTest is Test {
         assertTrue(bytes(uri).length > 0);
         
         vm.stopPrank();
+    }
+
+    function testSetAnimationUrl() public {
+        string memory newUrl = "https://new-animation.url";
+        
+        // Should revert when called by non-owner
+        vm.prank(address(0xdead));
+        vm.expectRevert("Ownable: caller is not the owner");
+        renderer.setAnimationUrl(newUrl);
+        
+        // Should succeed when called by owner (test contract)
+        renderer.setAnimationUrl(newUrl);
+        
+        // Verify the URL was updated
+        assertEq(renderer.getAnimationUrl(), newUrl);
+    }
+
+    function testInitialAnimationUrl() public {
+        // Verify the initial animation URL is set correctly from Constants
+        assertEq(renderer.getAnimationUrl(), Constants.ANIMATION_URL);
     }
 }
