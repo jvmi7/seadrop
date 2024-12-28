@@ -9,6 +9,8 @@ import "../libraries/SVGGenerator.sol";
 import "../libraries/Palettes.sol";
 import "../libraries/Utils.sol";
 import "./ArrayUtils.sol";
+import "./VolatilityUtils.sol";
+import "./PatternUtils.sol";
 
 /**
  * @title MetadataUtils
@@ -80,7 +82,7 @@ library MetadataUtils {
 
     /**
      * @notice Generates the attributes section of the token metadata
-     * @dev Includes palette name, lock status, and current value
+     * @dev Includes palette name and current value
      * @param metadata The token metadata structure
      * @return Formatted string containing the token attributes
      */
@@ -93,9 +95,10 @@ library MetadataUtils {
         return string(
             abi.encodePacked(
                 '"attributes":[',
-                '{"trait_type":"palette","value":"', palette.name, '"},',
-                '{"trait_type":"isLocked","value":"', metadata.isLocked ? 'yes' : 'no', '"},',
-                '{"trait_type":"value","value":"', uint256(metadata.values.getLastNonZeroValue()).toString(), '"}',
+                '{"trait_type":"palette","value":"', palette.name, '"}',
+                ',{"trait_type":"value","value":"', uint256(metadata.values.getLastNonZeroValue()).toString(), '"}',
+                ',{"trait_type":"volatility","value":"', VolatilityUtils.getVolatility(metadata.values), '"}',
+                ',{"trait_type":"pattern","value":"', PatternUtils.getPattern(metadata.values), '"}',
                 ']'
             )
         );

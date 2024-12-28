@@ -21,9 +21,6 @@ contract ChartsERC721SeaDrop is ERC721SeaDrop, IChartsErrors {
     /*************************************/
     /*              Events               */
     /*************************************/
-    /// @notice Emitted when a token's values are permanently locked
-    event TokenValuesLocked(uint256 indexed tokenId, address indexed owner);
-
     /// @notice Emitted when tokens are converted to a different palette
     event TokensConverted(
         uint256[] burnedTokenIds,
@@ -118,30 +115,6 @@ contract ChartsERC721SeaDrop is ERC721SeaDrop, IChartsErrors {
         for (uint256 i = 0; i < quantity; i++) {
             uint256 tokenId = _totalMinted() - quantity + i + 1;
             metadataRenderer.setInitialMetadata(tokenId);
-        }
-    }
-
-    /**
-     * @notice Locks a token's values permanently
-     * @param tokenId The ID of the token to lock
-     * @dev Can only be called by the token owner
-     */
-    function lockTokenValues(uint256 tokenId) external nonReentrant {
-        if (!_exists(tokenId)) {
-            revert TokenError(tokenId);
-        }
-        if (ownerOf(tokenId) != msg.sender) {
-            revert NotTokenOwner(msg.sender, tokenId, ownerOf(tokenId));
-        }
-        if (address(metadataRenderer) == address(0)) {
-            revert MetadataError();
-        }
-
-        // Call the metadata renderer's lock function
-        try metadataRenderer.lockTokenValues(tokenId) {
-            emit TokenValuesLocked(tokenId, msg.sender);
-        } catch {
-            revert MetadataError();
         }
     }
 

@@ -57,7 +57,6 @@ contract MetadataRendererTest is Test {
     MockValueGenerator public valueGenerator;
     address public nftContract;
 
-    event TokenLocked(uint256 indexed tokenId);
 
     function setUp() public {
         nftContract = makeAddr("nftContract");
@@ -111,54 +110,6 @@ contract MetadataRendererTest is Test {
         vm.stopPrank();
     }
 
-    function testLockTokenValues() public {
-        vm.startPrank(nftContract);
-        
-        uint8[7] memory mockValues = [1, 2, 3, 4, 5, 6, 7];
-        valueGenerator.setMockValues(1, mockValues);
-        
-        vm.expectEmit(true, false, false, false);
-        emit TokenLocked(1);
-        renderer.lockTokenValues(1);
-        
-        // Verify token is locked
-        string memory uri = renderer.generateTokenURI(1);
-        assertTrue(bytes(uri).length > 0);
-        
-        vm.stopPrank();
-    }
-
-    function testLockTokenValuesWithZeroValues() public {
-        vm.startPrank(nftContract);
-        
-        uint8[7] memory mockValues = [0, 2, 3, 4, 5, 6, 7];
-        valueGenerator.setMockValues(1, mockValues);
-        
-        vm.expectRevert(
-            abi.encodeWithSignature(
-                "ValuesNotReadyForLocking(string)",
-                "Token cannot be locked with unrevealed values"
-            )
-        );
-        renderer.lockTokenValues(1);
-        
-        vm.stopPrank();
-    }
-
-    function testPreventDoubleLocking() public {
-        vm.startPrank(nftContract);
-        
-        uint8[7] memory mockValues = [1, 2, 3, 4, 5, 6, 7];
-        valueGenerator.setMockValues(1, mockValues);
-        
-        renderer.lockTokenValues(1);
-        
-        vm.expectRevert(MetadataRenderer.TokenAlreadyLocked.selector);
-        renderer.lockTokenValues(1);
-        
-        vm.stopPrank();
-    }
-
     function testGetRevealedValuesCount() public {
         vm.startPrank(nftContract);
         
@@ -184,9 +135,6 @@ contract MetadataRendererTest is Test {
         
         vm.expectRevert(MetadataRenderer.OnlyNFTContract.selector);
         renderer.setSpecialToken(1, 4);
-        
-        vm.expectRevert(MetadataRenderer.OnlyNFTContract.selector);
-        renderer.lockTokenValues(1);
         
         vm.stopPrank();
     }

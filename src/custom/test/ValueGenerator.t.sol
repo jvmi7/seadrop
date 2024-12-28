@@ -88,8 +88,6 @@ contract ValueGeneratorTest is Test {
         // Test default token (iteration 0)
         uint8[7] memory defaultValues = generator.generateValuesFromSeeds(tokenId);
 
-        bytes32[7] memory seeds = generator.getRandomSeeds();
-
         // Check that at least one value is non-zero
         bool hasNonZeroValue = false;
         for (uint256 i = 0; i < 7; i++) {

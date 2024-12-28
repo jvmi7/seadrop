@@ -5,5 +5,4 @@ struct TokenMetadata {
     uint256 id;
     uint8[7] values;
     uint8 palette;
-    bool isLocked;
 }

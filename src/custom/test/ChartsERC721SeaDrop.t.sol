@@ -9,7 +9,6 @@ import "../libraries/Palettes.sol";
 
 // Mock MetadataRenderer contract for testing
 contract MockMetadataRenderer is IMetadataRenderer {
-    mapping(uint256 => bool) public lockedTokens;
     mapping(uint256 => uint8) public tokenPalettes;
     mapping(uint256 => bool) public specialTokens;
     address public nftContractAddress;
@@ -23,9 +22,6 @@ contract MockMetadataRenderer is IMetadataRenderer {
         tokenPalettes[tokenId] = 0;
     }
 
-    function lockTokenValues(uint256 tokenId) external {
-        lockedTokens[tokenId] = true;
-    }
 
     function setSpecialToken(uint256 tokenId, uint8 palette) external {
         specialTokens[tokenId] = true;
@@ -75,7 +71,6 @@ contract ChartsERC721SeaDropTest is Test {
     address public user1;
     address public user2;
 
-    event TokenValuesLocked(uint256 indexed tokenId, address indexed owner);
     event TokensConverted(uint256[] burnedTokenIds, uint256 newTokenId, uint8 targetPalette);
     event MetadataRendererUpdated(address indexed oldRenderer, address indexed newRenderer);
 
@@ -116,29 +111,6 @@ contract ChartsERC721SeaDropTest is Test {
         assertEq(charts.balanceOf(user1), 1);
         assertEq(charts.ownerOf(1), user1);
         vm.stopPrank();
-    }
-
-    function testLockTokenValues() public {
-        // Mint token first
-        vm.prank(seaDropAddress);
-        charts.mintSeaDrop(user1, 1);
-
-        // Lock token values
-        vm.prank(user1);
-        vm.expectEmit(true, true, false, false);
-        emit TokenValuesLocked(1, user1);
-        charts.lockTokenValues(1);
-        
-        assertTrue(renderer.lockedTokens(1));
-    }
-
-    function testLockTokenValuesRevertNotOwner() public {
-        vm.prank(seaDropAddress);
-        charts.mintSeaDrop(user1, 1);
-
-        vm.prank(user2);
-        vm.expectRevert(abi.encodeWithSelector(IChartsErrors.NotTokenOwner.selector, user2, 1, user1));
-        charts.lockTokenValues(1);
     }
 
     function testConvertTokensChromatic() public {

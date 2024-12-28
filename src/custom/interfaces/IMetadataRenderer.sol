@@ -13,7 +13,6 @@ interface IMetadataRenderer {
     /*              Events            */
     /**********************************/
     event MetadataUpdated(uint256 indexed tokenId);
-    event TokenLocked(uint256 indexed tokenId);
 
     /**********************************/
     /*            Functions           */
@@ -38,9 +37,6 @@ interface IMetadataRenderer {
 
     /// @notice Sets a token as a special token with a specific palette
     function setSpecialToken(uint256 tokenId, uint8 palette) external;
-
-    /// @notice Locks a token's values permanently
-    function lockTokenValues(uint256 tokenId) external;
 
     /// @notice Generates the complete token URI for a given token
     function generateTokenURI(uint256 tokenId) external view returns (string memory);

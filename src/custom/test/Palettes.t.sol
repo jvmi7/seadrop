@@ -12,7 +12,7 @@ contract PalettesTest is Test, StringAssertions {
     function testClassicPalette() public {
         Palettes.ColorPalette memory palette = Palettes.getColorPalette(Constants.CLASSIC);
         
-        assertEq(palette.name, "Classic");
+        assertEq(palette.name, "classic");
         assertEq(palette.background, "#000000");
         assertEq(palette.surface, "#0e0e0e");
         assertEq(palette.barColors[0], "#ff7700");

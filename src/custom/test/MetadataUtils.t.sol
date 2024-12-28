@@ -19,8 +19,7 @@ contract MetadataUtilsTest is Test, StringAssertions {
         TokenMetadata memory metadata = TokenMetadata({
             id: 1,
             values: values,
-            palette: 0,
-            isLocked: false
+            palette: 0
         });
 
         // Act
@@ -62,8 +61,7 @@ contract MetadataUtilsTest is Test, StringAssertions {
         TokenMetadata memory metadata = TokenMetadata({
             id: 1,
             values: values,
-            palette: 0,
-            isLocked: false
+            palette: 0
         });
 
         // Act
@@ -83,8 +81,7 @@ contract MetadataUtilsTest is Test, StringAssertions {
         TokenMetadata memory metadata = TokenMetadata({
             id: 1,
             values: values,
-            palette: 0,
-            isLocked: false
+            palette: 0
         });
 
         // Act
@@ -94,7 +91,6 @@ contract MetadataUtilsTest is Test, StringAssertions {
         assertTrue(bytes(attributes).length > 0);
         assertStringContains(attributes, '"trait_type"');
         assertStringContains(attributes, '"palette"');
-        assertStringContains(attributes, '"isLocked"');
         assertStringContains(attributes, '"value"');
     }
 

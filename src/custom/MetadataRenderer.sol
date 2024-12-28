@@ -37,10 +37,6 @@ contract MetadataRenderer is IMetadataRenderer, Ownable {
 
     /// @notice Maps token IDs to their color palettes
     mapping(uint256 => uint8) private _tokenPalettes;
-    /// @notice Tracks whether a token's values are locked
-    mapping(uint256 => bool) private _tokenLocked;
-    /// @notice Stores the locked values for tokens
-    mapping(uint256 => uint8[VALUES_ARRAY_SIZE]) private _lockedValues;
     /// @notice Tracks whether a token is a special token
     mapping(uint256 => bool) private _isSpecialToken;
 
@@ -48,8 +44,6 @@ contract MetadataRenderer is IMetadataRenderer, Ownable {
     /*              Errors               */
     /*************************************/
     error OnlyNFTContract();
-    error TokenAlreadyLocked();
-    error ValuesNotReadyForLocking(string message);
     error InvalidSpecialPalette();
 
     /*************************************/
@@ -157,25 +151,6 @@ contract MetadataRenderer is IMetadataRenderer, Ownable {
     /*              External             */
     /*************************************/
     /**
-     * @notice Locks a token's values permanently
-     * @param tokenId The ID of the token to lock
-     * @dev Once locked, a token's values cannot be changed
-     */
-    function lockTokenValues(uint256 tokenId) external onlyNFTContract {
-        if (_tokenLocked[tokenId]) revert TokenAlreadyLocked();
-        
-        uint8[VALUES_ARRAY_SIZE] memory currentValues = valueGenerator.generateValuesFromSeeds(tokenId);
-        if (!currentValues.areAllValuesNonZero()) {
-            revert ValuesNotReadyForLocking("Token cannot be locked with unrevealed values");
-        }
-        
-        _tokenLocked[tokenId] = true;
-        _lockedValues[tokenId] = currentValues;
-        
-        emit TokenLocked(tokenId);
-    }
-
-    /**
      * @notice Generates the complete token URI for a given token
      * @param tokenId The ID of the token to generate URI for
      * @return The complete token URI as a string
@@ -202,22 +177,21 @@ contract MetadataRenderer is IMetadataRenderer, Ownable {
         return TokenMetadata({
             id: tokenId,
             values: values,
-            palette: _tokenPalettes[tokenId],
-            isLocked: _tokenLocked[tokenId]
+            palette: _tokenPalettes[tokenId]
         });
     }
 
     /**
      * @notice Retrieves the current values for a token
      * @param tokenId The ID of the token to get values for
-     * @return Array of values, either locked or generated
+     * @return Array of values
      */
     function _getValues(uint256 tokenId) 
         private 
         view 
         returns (uint8[VALUES_ARRAY_SIZE] memory) 
     {
-        return _tokenLocked[tokenId] ? _lockedValues[tokenId] : valueGenerator.generateValuesFromSeeds(tokenId);
+        return valueGenerator.generateValuesFromSeeds(tokenId);
     }
 
     /**

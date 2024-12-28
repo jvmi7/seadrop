@@ -25,7 +25,7 @@ contract DeployAndConfigureChartsToken is Script {
     // Drop config
     uint16 feeBps = 500; // 5%
     uint80 mintPrice = 0.0000 ether;
-    uint16 maxTotalMintableByWallet = 10_000;
+    uint16 maxTotalMintableByWallet = 1_000;
 
     ChartsERC721SeaDrop token;
     ValueGenerator valueGenerator;
@@ -86,11 +86,11 @@ contract DeployAndConfigureChartsToken is Script {
 
         for (uint256 i = 0; i < 10; i++) {  
             // Mint initial tokens
-            ISeaDrop(seadrop).mintPublic{ value: mintPrice * 1_000 }(
+            ISeaDrop(seadrop).mintPublic{ value: mintPrice * 100 }(
                 address(token),
                 feeRecipient,
                 address(0),
-                1_000 // quantity
+                100 // quantity
             );
         }
 
@@ -98,7 +98,6 @@ contract DeployAndConfigureChartsToken is Script {
 
         // ===== CHROMATIC =====
         uint256 numChromaticPalettes = 12;
-        uint256 numPastelPalettes = 2;
 
         // Convert first 24 tokens into 6 chromatic palettes (4 tokens each)
         for (uint256 i = 0; i < numChromaticPalettes; i++) {
