@@ -133,12 +133,12 @@ contract ChartsERC721SeaDropTest is Test {
 
         vm.prank(user1);
         vm.expectEmit(true, true, true, true);
-        emit TokensConverted(tokenIds, 5, Palettes.CHROMATIC);
-        charts.convertTokens(tokenIds, Palettes.CHROMATIC);
+        emit TokensConverted(tokenIds, 5, Constants.CHROMATIC);
+        charts.convertTokens(tokenIds, Constants.CHROMATIC);
 
         // Verify conversion
         assertTrue(renderer.getIsSpecialToken(5));
-        assertEq(renderer.getTokenPalette(5), Palettes.CHROMATIC);
+        assertEq(renderer.getTokenPalette(5), Constants.CHROMATIC);
     }
 
     function testConvertTokensPastel() public {
@@ -149,7 +149,7 @@ contract ChartsERC721SeaDropTest is Test {
 
         // Set all tokens to palette 0
         for (uint256 i = 1; i <= 3; i++) {
-            renderer.setTokenPalette(i, Palettes.CHROMATIC);
+            renderer.setTokenPalette(i, Constants.CHROMATIC);
         }
 
         uint256[] memory tokenIds = new uint256[](3);
@@ -159,11 +159,11 @@ contract ChartsERC721SeaDropTest is Test {
 
         vm.prank(user1);
         vm.expectEmit(true, true, true, true);
-        emit TokensConverted(tokenIds, 4, Palettes.PASTEL);
-        charts.convertTokens(tokenIds, Palettes.PASTEL);
+        emit TokensConverted(tokenIds, 4, Constants.PASTEL);
+        charts.convertTokens(tokenIds, Constants.PASTEL);
 
         assertTrue(renderer.getIsSpecialToken(4));
-        assertEq(renderer.getTokenPalette(4), Palettes.PASTEL);
+        assertEq(renderer.getTokenPalette(4), Constants.PASTEL);
     }
 
     function testConvertTokensGreyscale() public {
@@ -174,7 +174,7 @@ contract ChartsERC721SeaDropTest is Test {
 
         // Set all tokens to palette 1
         for (uint256 i = 1; i <= 2; i++) {
-            renderer.setTokenPalette(i, Palettes.PASTEL);
+            renderer.setTokenPalette(i, Constants.PASTEL);
         }
 
         uint256[] memory tokenIds = new uint256[](2);
@@ -184,21 +184,21 @@ contract ChartsERC721SeaDropTest is Test {
 
         vm.prank(user1);
         vm.expectEmit(true, true, true, true);
-        emit TokensConverted(tokenIds, 3, Palettes.GREYSCALE);
-        charts.convertTokens(tokenIds, Palettes.GREYSCALE);
+        emit TokensConverted(tokenIds, 3, Constants.GREYSCALE);
+        charts.convertTokens(tokenIds, Constants.GREYSCALE);
 
         assertTrue(renderer.getIsSpecialToken(3));
-        assertEq(renderer.getTokenPalette(3), Palettes.GREYSCALE);
+        assertEq(renderer.getTokenPalette(3), Constants.GREYSCALE);
     }
 
     function testConvertTokensRevertInvalidInput() public {
         uint256[] memory tokenIds = new uint256[](0);
         vm.expectRevert(abi.encodeWithSelector(IChartsErrors.InvalidTokenInput.selector, tokenIds));
-        charts.convertTokens(tokenIds, Palettes.PASTEL);
+        charts.convertTokens(tokenIds, Constants.PASTEL);
 
         tokenIds = new uint256[](5);
         vm.expectRevert(abi.encodeWithSelector(IChartsErrors.InvalidTokenInput.selector, tokenIds));
-        charts.convertTokens(tokenIds, Palettes.PASTEL);
+        charts.convertTokens(tokenIds, Constants.PASTEL);
     }
 
     function testConvertTokensRevertWrongPalette() public {
@@ -206,10 +206,10 @@ contract ChartsERC721SeaDropTest is Test {
         charts.mintSeaDrop(user1, 4);
 
         // Set different palettes
-        renderer.setTokenPalette(1, Palettes.GREENS);
-        renderer.setTokenPalette(2, Palettes.BLUES);
-        renderer.setTokenPalette(3, Palettes.VIOLETS);
-        renderer.setTokenPalette(4, Palettes.YELLOWS);
+        renderer.setTokenPalette(1, Constants.GREENS);
+        renderer.setTokenPalette(2, Constants.BLUES);
+        renderer.setTokenPalette(3, Constants.VIOLETS);
+        renderer.setTokenPalette(4, Constants.YELLOWS);
 
         uint256[] memory tokenIds = new uint256[](4);
         for (uint256 i = 0; i < 4; i++) {

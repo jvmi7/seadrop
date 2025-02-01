@@ -127,87 +127,87 @@ contract ChartsERC721SeaDrop is ERC721SeaDrop, IChartsErrors {
         external
         nonReentrant
     {
-        // Check tokenIds length
-        if (tokenIds.length == 0 || tokenIds.length > 4) {
-            revert InvalidTokenInput(tokenIds);
-        }
+        // // Check tokenIds length
+        // if (tokenIds.length == 0 || tokenIds.length > 4) {
+        //     revert InvalidTokenInput(tokenIds);
+        // }
 
-        // Get conversion rules from Palettes library
-        Palettes.PaletteConversion memory conversion = Palettes.getPaletteConversion(targetPalette);
-        if (conversion.resultPalette == 0) {
-            revert ConversionError(0, targetPalette);
-        }
+        // // Get conversion rules from Palettes library
+        // Palettes.PaletteConversion memory conversion = Palettes.getPaletteConversion(targetPalette);
+        // if (conversion.resultPalette == 0) {
+        //     revert ConversionError(0, targetPalette);
+        // }
 
-        // Check if the correct number of tokens are provided
-        if (tokenIds.length != conversion.requiredTokenCount) {
-            revert InvalidTokenInput(tokenIds);
-        }
+        // // Check if the correct number of tokens are provided
+        // if (tokenIds.length != conversion.requiredTokenCount) {
+        //     revert InvalidTokenInput(tokenIds);
+        // }
         
-        // Check all tokens exist and are owned by sender
-        for (uint256 i = 0; i < tokenIds.length; i++) {
-            if (!_exists(tokenIds[i])) {
-                revert TokenError(tokenIds[i]);
-            }
-            if (ownerOf(tokenIds[i]) != msg.sender) {
-                revert NotTokenOwner(msg.sender, tokenIds[i], ownerOf(tokenIds[i]));
-            }
-        }
+        // // Check all tokens exist and are owned by sender
+        // for (uint256 i = 0; i < tokenIds.length; i++) {
+        //     if (!_exists(tokenIds[i])) {
+        //         revert TokenError(tokenIds[i]);
+        //     }
+        //     if (ownerOf(tokenIds[i]) != msg.sender) {
+        //         revert NotTokenOwner(msg.sender, tokenIds[i], ownerOf(tokenIds[i]));
+        //     }
+        // }
 
-        // Check for duplicate token IDs
-        if (tokenIds.length > 1) {
-            for (uint256 i = 0; i < tokenIds.length - 1; i++) {
-                for (uint256 j = i + 1; j < tokenIds.length; j++) {
-                    if (tokenIds[i] == tokenIds[j]) {
-                        revert TokenError(tokenIds[i]);
-                    }
-                }
-            }
-        }
+        // // Check for duplicate token IDs
+        // if (tokenIds.length > 1) {
+        //     for (uint256 i = 0; i < tokenIds.length - 1; i++) {
+        //         for (uint256 j = i + 1; j < tokenIds.length; j++) {
+        //             if (tokenIds[i] == tokenIds[j]) {
+        //                 revert TokenError(tokenIds[i]);
+        //             }
+        //         }
+        //     }
+        // }
 
-        // Verify palettes
-        if (conversion.requiredPalette == type(uint8).max) {
-            _validateChromaticConversion(tokenIds);
-        } else {
-            _validatePastelGreyscaleConversion(tokenIds, conversion.requiredPalette);
-        }
+        // // Verify palettes
+        // if (conversion.requiredPalette == type(uint8).max) {
+        //     _validateChromaticConversion(tokenIds);
+        // } else {
+        //     _validatePastelGreyscaleConversion(tokenIds, conversion.requiredPalette);
+        // }
 
-        // Effects
-        uint256 newTokenId = _totalMinted() + 1;
-        _safeMint(msg.sender, 1);
+        // // Effects
+        // uint256 newTokenId = _totalMinted() + 1;
+        // _safeMint(msg.sender, 1);
         
-        for (uint256 i = 0; i < tokenIds.length; i++) {
-            _burn(tokenIds[i]);
-        }
+        // for (uint256 i = 0; i < tokenIds.length; i++) {
+        //     _burn(tokenIds[i]);
+        // }
 
-        metadataRenderer.setSpecialToken(newTokenId, conversion.resultPalette);
+        // metadataRenderer.setSpecialToken(newTokenId, conversion.resultPalette);
 
-        if (!metadataRenderer.getIsSpecialToken(newTokenId)) {
-            revert TokenError(newTokenId);
-        }
+        // if (!metadataRenderer.getIsSpecialToken(newTokenId)) {
+        //     revert TokenError(newTokenId);
+        // }
 
-        emit TokensConverted(tokenIds, newTokenId, targetPalette);
+        // emit TokensConverted(tokenIds, newTokenId, targetPalette);
     }
 
     /// @dev Validates tokens for chromatic conversion
     function _validateChromaticConversion(uint256[] calldata tokenIds) private view {
-        bool[4] memory basepalettesFound;
-        for (uint256 i = 0; i < tokenIds.length; i++) {
-            uint8 tokenPalette = metadataRenderer.getTokenPalette(tokenIds[i]);
-            if (tokenPalette >= Palettes.CHROMATIC) {
-                revert InvalidPalette(tokenPalette);
-            }
-            if (basepalettesFound[tokenPalette]) {
-                revert ConversionError(tokenPalette, Palettes.CHROMATIC);
-            }
-            basepalettesFound[tokenPalette] = true;
-        }
+        // bool[4] memory basepalettesFound;
+        // for (uint256 i = 0; i < tokenIds.length; i++) {
+        //     uint8 tokenPalette = metadataRenderer.getTokenPalette(tokenIds[i]);
+        //     if (tokenPalette >= Palettes.CHROMATIC) {
+        //         revert InvalidPalette(tokenPalette);
+        //     }
+        //     if (basepalettesFound[tokenPalette]) {
+        //         revert ConversionError(tokenPalette, Palettes.CHROMATIC);
+        //     }
+        //     basepalettesFound[tokenPalette] = true;
+        // }
         
-        // Verify all palettes were found
-        for (uint256 i = 0; i < 4; i++) {
-            if (!basepalettesFound[i]) {
-                revert ConversionError(uint8(i), Palettes.CHROMATIC);
-            }
-        }
+        // // Verify all palettes were found
+        // for (uint256 i = 0; i < 5; i++) {
+        //     if (!basepalettesFound[i]) {
+        //         revert ConversionError(uint8(i), Palettes.CHROMATIC);
+        //     }
+        // }
     }
 
     /// @dev Validates tokens for standard conversion
@@ -215,11 +215,11 @@ contract ChartsERC721SeaDrop is ERC721SeaDrop, IChartsErrors {
         uint256[] calldata tokenIds, 
         uint8 requiredPalette
     ) private view {
-        for (uint256 i = 0; i < tokenIds.length; i++) {
-            uint8 tokenPalette = metadataRenderer.getTokenPalette(tokenIds[i]);
-            if (tokenPalette != requiredPalette) {
-                revert ConversionError(tokenPalette, requiredPalette);
-            }
-        }
+        // for (uint256 i = 0; i < tokenIds.length; i++) {
+        //     uint8 tokenPalette = metadataRenderer.getTokenPalette(tokenIds[i]);
+        //     if (tokenPalette != requiredPalette) {
+        //         revert ConversionError(tokenPalette, requiredPalette);
+        //     }
+        // }
     }
 }

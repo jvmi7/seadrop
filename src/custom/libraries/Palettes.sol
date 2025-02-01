@@ -20,14 +20,6 @@ library Palettes {
     string constant SURFACE = "#111111";
 
     /// @notice Palette indices for different color schemes
-    uint8 constant REDS = Constants.REDS;
-    uint8 constant YELLOWS = Constants.YELLOWS;
-    uint8 constant GREENS = Constants.GREENS;
-    uint8 constant BLUES = Constants.BLUES;
-    uint8 constant VIOLETS = Constants.VIOLETS;
-    uint8 constant CHROMATIC = Constants.CHROMATIC;
-    uint8 constant PASTEL = Constants.PASTEL;
-    uint8 constant GREYSCALE = Constants.GREYSCALE;
 
     /// @notice Special value indicating all base palettes are required
     uint8 constant ALL_BASE_PALETTES = type(uint8).max;
@@ -70,47 +62,47 @@ library Palettes {
     /// @param paletteIndex Index of the desired color palette (0-6)
     /// @return ColorPalette The selected color scheme
     function getColorPalette(uint8 paletteIndex) internal pure returns (ColorPalette memory) {
-        if (paletteIndex == REDS) {
+        if (paletteIndex == Constants.REDS) {
             return ColorPalette({
-                name: "reds",
+                name: "red",
                 background: BACKGROUND,
                 surface: SURFACE,
                 barColors: ['#e900d1', '#ff00b7', '#ff007a', '#ff003c', '#ff071e', '#ff180d', '#ff3f14']
             });
         }
-        if (paletteIndex == YELLOWS) {
+        if (paletteIndex == Constants.YELLOWS) {
             return ColorPalette({
-                name: "yellows",
+                name: "yellow",
                 background: BACKGROUND,
                 surface: SURFACE,
                 barColors: ['#FF6200', '#FF7700', '#FF8C00', '#FFA100', '#FFB700', '#FFCC00', '#FFE100']
             });
         }
-        if (paletteIndex == GREENS) {
+        if (paletteIndex == Constants.GREENS) {
             return ColorPalette({
-                name: "greens",
+                name: "green",
                 background: BACKGROUND,
                 surface: SURFACE,
                 barColors: ['#00cc8e', '#00de79', '#00f057', '#14ff00', '#6fff00', '#9bff00', '#bdff00']
             });
         }
-        if (paletteIndex == BLUES) {
+        if (paletteIndex == Constants.BLUES) {
             return ColorPalette({
-                name: "blues",
+                name: "blue",
                 background: BACKGROUND,
                 surface: SURFACE,
                 barColors: ['#0057ff', '#0071ff', '#008aff', '#00a4ff', '#00bdff', '#00d7ff', '#00f0ff']
             });
         }
-        if (paletteIndex == VIOLETS) {
+        if (paletteIndex == Constants.VIOLETS) {
             return ColorPalette({
-                name: "violets",
+                name: "violet",
                 background: BACKGROUND,
                 surface: SURFACE,
                 barColors: ['#6100ff', '#770fff', '#8b1fff', '#9d2eff', '#ae3dff', '#bd4dff', '#cb5cff']
             });
         }
-        if (paletteIndex == CHROMATIC) {
+        if (paletteIndex == Constants.CHROMATIC) {
             return ColorPalette({
                 name: "chromatic",
                 background: BACKGROUND,
@@ -118,14 +110,14 @@ library Palettes {
                 barColors: ["#FF0000", "#FF6200", "#FFE300", "#00FF00", "#00CFFF", "#6F00FF", "#F200FF"]
             });
         }
-        if (paletteIndex == PASTEL) {
+        if (paletteIndex == Constants.PASTEL) {
             return ColorPalette({
                 name: "pastel",
                 background: BACKGROUND,
                 surface: SURFACE,
                 barColors: ["#FF8080", "#FCAD81", "#FFEC7D", "#78FF78", "#7EEAFC", "#AE7BFF", "#F680FF"]
             });
-        } if (paletteIndex == GREYSCALE) {  
+        } if (paletteIndex == Constants.GREYSCALE) {  
             return ColorPalette({
                 name: "greyscale",
             background: BACKGROUND,
@@ -139,20 +131,20 @@ library Palettes {
 
     /// @notice Returns the conversion rules for a target palette
     function getPaletteConversion(uint8 targetPalette) internal pure returns (PaletteConversion memory) {
-        if (targetPalette == CHROMATIC) {
-            return PaletteConversion(ALL_BASE_PALETTES, CHROMATIC, 4);
+        if (targetPalette == Constants.CHROMATIC) {
+            return PaletteConversion(ALL_BASE_PALETTES, Constants.CHROMATIC, 4);
         }
-        if (targetPalette == PASTEL) {
-            return PaletteConversion(CHROMATIC, PASTEL, 3);
+        if (targetPalette == Constants.PASTEL) {
+            return PaletteConversion(Constants.CHROMATIC, Constants.PASTEL, 3);
         }
-        if (targetPalette == GREYSCALE) {
-            return PaletteConversion(PASTEL, GREYSCALE, 2);
+        if (targetPalette == Constants.GREYSCALE) {
+            return PaletteConversion(Constants.PASTEL, Constants.GREYSCALE, 2);
         }
 
         revert InvalidPalette(targetPalette, "Cannot convert to this palette");
     }
 
     function isSpecialPalette(uint8 paletteIndex) internal pure returns (bool) {
-        return paletteIndex != REDS && paletteIndex != YELLOWS && paletteIndex != GREENS && paletteIndex != BLUES && paletteIndex != VIOLETS;
+        return paletteIndex != Constants.REDS && paletteIndex != Constants.YELLOWS && paletteIndex != Constants.GREENS && paletteIndex != Constants.BLUES && paletteIndex != Constants.VIOLETS;
     }
 }

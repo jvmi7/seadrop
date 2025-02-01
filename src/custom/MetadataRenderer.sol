@@ -200,7 +200,7 @@ contract MetadataRenderer is IMetadataRenderer, Ownable {
      * @return Palette index (0-3)
      */
     function _calculateInitialPalette(uint256 tokenId) private pure returns (uint8) {
-        uint8 mod = uint8(tokenId % Constants.VIOLETS + 1);
+        uint8 mod = uint8(tokenId % 5);
         return mod;
     }
 }
