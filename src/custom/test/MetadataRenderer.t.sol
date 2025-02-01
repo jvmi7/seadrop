@@ -38,6 +38,10 @@ contract MockValueGenerator is IValueGenerator {
         return tokenValues[tokenId];
     }
 
+    function testFastForwardReveal() external {
+        // Mock implementation - doesn't need to do anything for tests
+    }
+
     // Helper functions for testing
     function setMockValues(uint256 tokenId, uint8[7] memory values) external {
         tokenValues[tokenId] = values;

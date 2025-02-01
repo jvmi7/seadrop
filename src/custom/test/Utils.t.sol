@@ -13,6 +13,10 @@ contract TestUtils {
     function testGetNewRandomSeed() public view returns (bytes32) {
         return Utils.getNewRandomSeed();
     }
+
+    function testAbs(uint8 a, uint8 b) public pure returns (uint8) {
+        return Utils.abs(a, b);
+    }
 }
 
 contract UtilsTest is Test {
@@ -76,5 +80,42 @@ contract UtilsTest is Test {
         // Expect revert with InvalidBlockHash error
         vm.expectRevert(abi.encodeWithSignature("InvalidBlockHash()"));
         utils.testGetNewRandomSeed();
+    }
+
+    /*************************************/
+    /*           abs Tests               */
+    /*************************************/
+
+    function test_abs_AGreaterThanB() public {
+        assertEq(utils.testAbs(10, 5), 5);
+    }
+
+    function test_abs_BGreaterThanA() public {
+        assertEq(utils.testAbs(5, 10), 5);
+    }
+
+    function test_abs_Equal() public {
+        assertEq(utils.testAbs(7, 7), 0);
+    }
+
+    function test_abs_Zero() public {
+        assertEq(utils.testAbs(0, 5), 5);
+        assertEq(utils.testAbs(5, 0), 5);
+    }
+
+    // Fuzz test to verify properties of absolute difference
+    function testFuzz_abs(uint8 a, uint8 b) public {
+        uint8 result = utils.testAbs(a, b);
+        
+        // Result should be the same regardless of parameter order
+        assertEq(result, utils.testAbs(b, a));
+        
+        // Result should be less than or equal to max(a, b)
+        assertTrue(result <= (a > b ? a : b));
+        
+        // If inputs are equal, result should be 0
+        if (a == b) {
+            assertEq(result, 0);
+        }
     }
 }

@@ -90,8 +90,6 @@ contract MetadataUtilsTest is Test, StringAssertions {
         // Assert
         assertTrue(bytes(attributes).length > 0);
         assertStringContains(attributes, '"trait_type"');
-        assertStringContains(attributes, '"palette"');
-        assertStringContains(attributes, '"value"');
     }
 
     function test_GenerateImageURI() public {

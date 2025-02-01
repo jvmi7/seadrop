@@ -8,4 +8,5 @@ interface IValueGenerator {
     function setTokenMintIteration(uint256 tokenId) external;
     function getCurrentIteration() external view returns (uint256);
     function getTokenMintIteration(uint256 tokenId) external view returns (uint256);
+    function testFastForwardReveal() external;
 }

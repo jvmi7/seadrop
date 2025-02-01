@@ -8,7 +8,7 @@ contract PatternUtilsTest is Test {
     function setUp() public {}
 
     function test_UpOnly() public {
-        uint8[7] memory values = [1, 2, 3, 4, 5, 6, 7];
+        uint8[7] memory values = [1, 2, 3, 3, 5, 6, 7];
         assertEq(PatternUtils.getPattern(values), "up only");
         assertTrue(PatternUtils.isUpOnly(values));
     }
@@ -21,44 +21,51 @@ contract PatternUtilsTest is Test {
 
     function test_Peak() public {
         uint8[7] memory values = [1, 2, 3, 4, 3, 2, 1];
+        uint8 reversals = PatternUtils.countReversals(values);
         assertEq(PatternUtils.getPattern(values), "peak");
-        assertTrue(PatternUtils.isPeak(values));
+        assertTrue(PatternUtils.isPeak(values, reversals));
     }
 
     function test_Valley() public {
         uint8[7] memory values = [4, 3, 2, 1, 2, 3, 4];
+        uint8 reversals = PatternUtils.countReversals(values);
         assertEq(PatternUtils.getPattern(values), "valley");
-        assertTrue(PatternUtils.isValley(values));
+        assertTrue(PatternUtils.isValley(values, reversals));
     }
 
     function test_UpDownUp() public {
         uint8[7] memory values = [1, 2, 3, 2, 1, 2, 3];
+        uint8 reversals = PatternUtils.countReversals(values);
         assertEq(PatternUtils.getPattern(values), "up down up");
-        assertTrue(PatternUtils.isUpDownUp(values));
+        assertTrue(PatternUtils.isUpDownUp(values, reversals));
     }
 
     function test_DownUpDown() public {
         uint8[7] memory values = [3, 2, 1, 2, 3, 2, 1];
+        uint8 reversals = PatternUtils.countReversals(values);
         assertEq(PatternUtils.getPattern(values), "down up down");
-        assertTrue(PatternUtils.isDownUpDown(values));
+        assertTrue(PatternUtils.isDownUpDown(values, reversals));
     }
 
     function test_WShape() public {
         uint8[7] memory values = [5, 4, 3, 4, 3, 4, 5];
+        uint8 reversals = PatternUtils.countReversals(values);
         assertEq(PatternUtils.getPattern(values), "w shape");
-        assertTrue(PatternUtils.isWShape(values));
+        assertTrue(PatternUtils.isWShape(values, reversals));
     }
 
     function test_MShape() public {
         uint8[7] memory values = [1, 2, 3, 2, 3, 2, 1];
+        uint8 reversals = PatternUtils.countReversals(values);
         assertEq(PatternUtils.getPattern(values), "m shape");
-        assertTrue(PatternUtils.isMShape(values));
+        assertTrue(PatternUtils.isMShape(values, reversals));
     }
 
     function test_Oscillating() public {
         uint8[7] memory values = [1, 2, 1, 2, 1, 2, 1];
+        uint8 reversals = PatternUtils.countReversals(values);
         assertEq(PatternUtils.getPattern(values), "oscillating");
-        assertTrue(PatternUtils.isOscillating(values));
+        assertTrue(PatternUtils.isOscillating(reversals));
     }
 
     function test_NoPattern() public {

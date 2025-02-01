@@ -10,6 +10,35 @@ import { Palettes } from "./Palettes.sol";
 library SVGGenerator {
     using Strings for uint256;
 
+    /// @notice Determines color indices for values based on palette type
+    /// @param values Array of values to get colors for
+    /// @param paletteIndex Index of the color palette being used
+    /// @return Array of color indices corresponding to palette.barColors
+    function getColorIndices(uint8[7] memory values, uint8 paletteIndex) internal pure returns (uint8[7] memory) {
+        uint8[7] memory colorIndices;
+        
+        // For CHROMATIC, PASTEL, and GREYSCALE: use sequential colors
+        if (Palettes.isSpecialPalette(paletteIndex)) {
+            for (uint256 i = 0; i < 7; i++) {
+                colorIndices[i] = uint8(i);
+            }
+        } else {
+            // For other palettes: determine color based on value ranges
+            for (uint256 i = 0; i < 7; i++) {
+                uint8 value = values[i];
+                if (value <= 14) colorIndices[i] = 0;
+                else if (value <= 28) colorIndices[i] = 1;
+                else if (value <= 42) colorIndices[i] = 2;
+                else if (value <= 56) colorIndices[i] = 3;
+                else if (value <= 70) colorIndices[i] = 4;
+                else if (value <= 84) colorIndices[i] = 5;
+                else colorIndices[i] = 6;
+            }
+        }
+        
+        return colorIndices;
+    }
+
     /// @notice Generates an SVG visualization based on provided values and color palette
     /// @param values Array of 7 values to visualize as bars
     /// @param paletteIndex Index of the color palette to use
@@ -24,6 +53,9 @@ library SVGGenerator {
             '<rect x="100" y="100" width="1000" height="1000" fill="', palette.surface, '" rx="80" ry="80" />'
         );
 
+        // Get color indices for all values
+        uint8[7] memory colorIndices = getColorIndices(values, paletteIndex);
+
         // Generate individual bars
         for (uint256 i = 0; i < 7; i++) {
             uint256 height;
@@ -37,22 +69,7 @@ library SVGGenerator {
             } else {
                 // Calculate bar height: minimum 90, maximum 560
                 height = 90 + ((value * 470) / 100);
-                
-                // Color selection logic
-                // For CHROMATIC, PASTEL, and GREYSCALE: use sequential colors
-                // For others: color based on value ranges
-                if (paletteIndex == 4 || paletteIndex == 5 || paletteIndex == 6) {
-                    barColor = palette.barColors[i];
-                } else {
-                    // Select color based on value ranges
-                    if (value <= 14) barColor = palette.barColors[0];
-                    else if (value <= 28) barColor = palette.barColors[1];
-                    else if (value <= 42) barColor = palette.barColors[2];
-                    else if (value <= 56) barColor = palette.barColors[3];
-                    else if (value <= 70) barColor = palette.barColors[4];
-                    else if (value <= 84) barColor = palette.barColors[5];
-                    else barColor = palette.barColors[6];
-                }
+                barColor = palette.barColors[colorIndices[i]];
             }
 
             // Calculate vertical position of bar

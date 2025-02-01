@@ -47,4 +47,8 @@ library Utils {
         
         return previousBlockHash;
     }
+
+    function abs(uint8 a, uint8 b) internal pure returns (uint8) {
+        return a >= b ? a - b : b - a;
+    }
 }

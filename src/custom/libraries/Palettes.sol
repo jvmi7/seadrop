@@ -17,13 +17,14 @@ library Palettes {
     string constant BACKGROUND = "#000000";
 
     /// @notice Default surface color (Dark grey)
-    string constant SURFACE = "#0e0e0e";
+    string constant SURFACE = "#111111";
 
     /// @notice Palette indices for different color schemes
-    uint8 constant CLASSIC = Constants.CLASSIC;
-    uint8 constant ICE = Constants.ICE;
-    uint8 constant FIRE = Constants.FIRE;
-    uint8 constant PUNCH = Constants.PUNCH;
+    uint8 constant REDS = Constants.REDS;
+    uint8 constant YELLOWS = Constants.YELLOWS;
+    uint8 constant GREENS = Constants.GREENS;
+    uint8 constant BLUES = Constants.BLUES;
+    uint8 constant VIOLETS = Constants.VIOLETS;
     uint8 constant CHROMATIC = Constants.CHROMATIC;
     uint8 constant PASTEL = Constants.PASTEL;
     uint8 constant GREYSCALE = Constants.GREYSCALE;
@@ -69,36 +70,44 @@ library Palettes {
     /// @param paletteIndex Index of the desired color palette (0-6)
     /// @return ColorPalette The selected color scheme
     function getColorPalette(uint8 paletteIndex) internal pure returns (ColorPalette memory) {
-        if (paletteIndex == CLASSIC) {
+        if (paletteIndex == REDS) {
             return ColorPalette({
-                name: "classic",
+                name: "reds",
                 background: BACKGROUND,
                 surface: SURFACE,
-                barColors: ["#ff7700", "#ffb200", "#fff000", "#BFF300", "#80F700", "#40FB00", "#00ff00"]
+                barColors: ['#e900d1', '#ff00b7', '#ff007a', '#ff003c', '#ff071e', '#ff180d', '#ff3f14']
             });
         }
-        if (paletteIndex == ICE) {
+        if (paletteIndex == YELLOWS) {
             return ColorPalette({
-                name: "ice",
+                name: "yellows",
                 background: BACKGROUND,
                 surface: SURFACE,
-                barColors: ["#5000FB", "#2849FD", "#0092FF", "#00AEFF", "#00C9FF", "#00E4FF", "#00FFFF"]
+                barColors: ['#FF6200', '#FF7700', '#FF8C00', '#FFA100', '#FFB700', '#FFCC00', '#FFE100']
             });
         }
-        if (paletteIndex == FIRE) {
+        if (paletteIndex == GREENS) {
             return ColorPalette({
-                name: "fire",
+                name: "greens",
                 background: BACKGROUND,
                 surface: SURFACE,
-                barColors: ["#FF1D00", "#FF5700", "#FF7200", "#FF8D00", "#FFA700", "#FFC200", "#FFDD00"]
+                barColors: ['#00cc8e', '#00de79', '#00f057', '#14ff00', '#6fff00', '#9bff00', '#bdff00']
             });
         }
-        if (paletteIndex == PUNCH) {
+        if (paletteIndex == BLUES) {
             return ColorPalette({
-                name: "punch",
+                name: "blues",
                 background: BACKGROUND,
                 surface: SURFACE,
-                barColors: ["#6F00FF", "#9B00FF", "#C600FF", "#F200FF", "#F600AA", "#FB0080", "#FF0056"]
+                barColors: ['#0057ff', '#0071ff', '#008aff', '#00a4ff', '#00bdff', '#00d7ff', '#00f0ff']
+            });
+        }
+        if (paletteIndex == VIOLETS) {
+            return ColorPalette({
+                name: "violets",
+                background: BACKGROUND,
+                surface: SURFACE,
+                barColors: ['#6100ff', '#770fff', '#8b1fff', '#9d2eff', '#ae3dff', '#bd4dff', '#cb5cff']
             });
         }
         if (paletteIndex == CHROMATIC) {
@@ -118,7 +127,7 @@ library Palettes {
             });
         } if (paletteIndex == GREYSCALE) {  
             return ColorPalette({
-                name: "preyscale",
+                name: "greyscale",
             background: BACKGROUND,
             surface: SURFACE,
                 barColors: ["#2C3240", "#4B505D", "#6A6E79", "#898D96", "#A7ABB2", "#C6C9CF", "#E5E7EB"]
@@ -141,5 +150,9 @@ library Palettes {
         }
 
         revert InvalidPalette(targetPalette, "Cannot convert to this palette");
+    }
+
+    function isSpecialPalette(uint8 paletteIndex) internal pure returns (bool) {
+        return paletteIndex != REDS && paletteIndex != YELLOWS && paletteIndex != GREENS && paletteIndex != BLUES && paletteIndex != VIOLETS;
     }
 }

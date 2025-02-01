@@ -11,6 +11,7 @@ import "../libraries/Utils.sol";
 import "./ArrayUtils.sol";
 import "./VolatilityUtils.sol";
 import "./PatternUtils.sol";
+import "./BadgeUtils.sol";
 
 /**
  * @title MetadataUtils
@@ -74,8 +75,8 @@ library MetadataUtils {
                 '"name":"', generateName(metadata.id), '",',
                 '"description":"', Constants.DESCRIPTION, '",',
                 '"image":"', generateImageURI(metadata.values, metadata.palette), '",',
-                '"animation_url":"https://charts-by-jvmi-jet.vercel.app/?values=[', generateValueString(metadata.values), ']&palette=', Palettes.getColorPalette(metadata.palette).name, '",',
-                '"values":"', generateValueString(metadata.values), '",'
+                '"animation_url":"', Constants.ANIMATION_URL, '?values=[', generateValueString(metadata.values), ']&palette=', Palettes.getColorPalette(metadata.palette).name, '",',
+                '"values":"[', generateValueString(metadata.values), ']",'
             )
         );
     }
@@ -92,13 +93,125 @@ library MetadataUtils {
         returns (string memory) 
     {
         Palettes.ColorPalette memory palette = Palettes.getColorPalette(metadata.palette);
+        string memory traits;
+
+        // First trait (no comma needed)
+        traits = string(
+            abi.encodePacked(
+                '{"trait_type":"[ palette ]","value":"',
+                palette.name,
+                '"}'
+            )
+        );
+
+        // Conditional traits based on first value
+        if (metadata.values[0] != 0) {
+            traits = string(abi.encodePacked(
+                traits,
+                string(
+                    abi.encodePacked(
+                        ',{"trait_type":"value","value":',
+                        uint256(metadata.values.getLastNonZeroValue()).toString(),
+                        '}'
+                    )
+                )
+            ));
+        }
+
+        // Conditional traits based on second value
+        if (metadata.values[1] != 0) {
+            traits = string(abi.encodePacked(
+                traits,
+                _formatTrait(" [ trend ]", PatternUtils.getTrend(metadata.values))
+            ));
+        }
+
+        // Conditional traits based on last value
+        if (metadata.values[6] != 0) {
+            traits = string(abi.encodePacked(
+                traits,
+                _formatTrait(" [ volatility ]", VolatilityUtils.getVolatility(metadata.values)),
+                _formatTrait(" [ pattern ]", PatternUtils.getPattern(metadata.values))
+            ));
+        }
+
+        // Conditional traits based on badges
+        if (BadgeUtils.isHighRoller(metadata.values)) {
+            traits = string(abi.encodePacked(
+                traits,
+                _formatTrait("high roller", "everything above 50")
+            ));
+        }
+
+        if (BadgeUtils.isLowStakes(metadata.values)) {
+            traits = string(abi.encodePacked(
+                traits,
+                _formatTrait("low stakes", "everything below 50")
+            ));
+        }
+
+        if (BadgeUtils.isRugged(metadata.values)) {
+            traits = string(abi.encodePacked(
+                traits,
+                _formatTrait("rugged", "got rekt on the last day")
+            ));
+        }
+
+        if (BadgeUtils.isBlackSwan(metadata.values)) {
+            traits = string(abi.encodePacked(
+                traits,
+                _formatTrait("black swan", "has a huge drop")
+            ));
+        }
+
+        if (BadgeUtils.isMoon(metadata.values)) {
+            traits = string(abi.encodePacked(
+                traits,
+                _formatTrait("moon", "has a huge spike")
+            ));
+        }
+
+        if (BadgeUtils.isComeback(metadata.values)) {
+            traits = string(abi.encodePacked(
+                traits,
+                _formatTrait("comeback", "went low but ended high")
+            ));
+        }
+
+        if (BadgeUtils.isRagsToRiches(metadata.values)) {
+            traits = string(abi.encodePacked(
+                traits,
+                _formatTrait("rags to riches", "started low but ended high")
+            ));
+        }
+
+        if (BadgeUtils.isFumbled(metadata.values)) {
+            traits = string(abi.encodePacked(
+                traits,
+                _formatTrait("fumbled", "started high but ended low")
+            ));
+        }
+
+        if (BadgeUtils.isSpike(metadata.values)) {
+            traits = string(abi.encodePacked(
+                traits,
+                _formatTrait("spike", "one day is significantly higher than the rest")
+            ));
+        }
+
+        if (BadgeUtils.isSymmetrical(metadata.values, metadata.palette)) {
+            traits = string(abi.encodePacked(
+                traits,
+                _formatTrait("symmetrical", "a mirror image")
+            ));
+        }
+
+
+        // Wrap in attributes array
         return string(
             abi.encodePacked(
                 '"attributes":[',
-                '{"trait_type":"palette","value":"', palette.name, '"}',
-                ',{"trait_type":"value","value":"', uint256(metadata.values.getLastNonZeroValue()).toString(), '"}',
-                ',{"trait_type":"volatility","value":"', VolatilityUtils.getVolatility(metadata.values), '"}',
-                ',{"trait_type":"pattern","value":"', PatternUtils.getPattern(metadata.values), '"}',
+                traits,
                 ']'
             )
         );
@@ -181,6 +294,26 @@ library MetadataUtils {
             result = string(abi.encodePacked(result, uint256(values[i]).toString()));
         }
         return result;
+    }
+
+    /*************************************/
+    /*         Helper Functions          */
+    /*************************************/
+
+    // Helper function to handle trait formatting
+    function _formatTrait(
+        string memory traitType,
+        string memory value
+    ) internal pure returns (string memory) {
+        return string(
+            abi.encodePacked(
+                ',{"trait_type":"',
+                traitType,
+                '","value":"',
+                value,
+                '"}'
+                )
+        );
     }
 }
 

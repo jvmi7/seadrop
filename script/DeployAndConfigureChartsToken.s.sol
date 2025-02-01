@@ -25,7 +25,7 @@ contract DeployAndConfigureChartsToken is Script {
     // Drop config
     uint16 feeBps = 500; // 5%
     uint80 mintPrice = 0.0000 ether;
-    uint16 maxTotalMintableByWallet = 1_000;
+    uint16 maxTotalMintableByWallet = 10_000;
 
     ChartsERC721SeaDrop token;
     ValueGenerator valueGenerator;
@@ -41,8 +41,8 @@ contract DeployAndConfigureChartsToken is Script {
 
         // Deploy NFT contract
         token = new ChartsERC721SeaDrop(
-            "Example Token",
-            "ExTKN",
+            "asdfsd",
+            "CXJKS",
             allowedSeadrop
         );
 
@@ -84,13 +84,13 @@ contract DeployAndConfigureChartsToken is Script {
         );
         
 
-        for (uint256 i = 0; i < 10; i++) {  
+        for (uint256 i = 0; i < 18; i++) {  
             // Mint initial tokens
-            ISeaDrop(seadrop).mintPublic{ value: mintPrice * 100 }(
+            ISeaDrop(seadrop).mintPublic{ value: mintPrice * 500 }(
                 address(token),
                 feeRecipient,
                 address(0),
-                100 // quantity
+                500 // quantity
             );
         }
 
@@ -107,6 +107,8 @@ contract DeployAndConfigureChartsToken is Script {
             }
             token.convertTokens(tokenIds, 4);
         }
+
+        valueGenerator.testFastForwardReveal();
 
         // // ===== PASTEL =====
         // for (uint256 i = 0; i < numPastelPalettes; i++) {

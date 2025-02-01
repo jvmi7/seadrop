@@ -10,7 +10,7 @@ contract PalettesTest is Test, StringAssertions {
     function setUp() public {}
 
     function testClassicPalette() public {
-        Palettes.ColorPalette memory palette = Palettes.getColorPalette(Constants.CLASSIC);
+        Palettes.ColorPalette memory palette = Palettes.getColorPalette(Constants.REDS);
         
         assertEq(palette.name, "classic");
         assertEq(palette.background, "#000000");
@@ -47,16 +47,17 @@ contract PalettesTest is Test, StringAssertions {
 
     function testInvalidPaletteConversion() public {
         // Test conversion for an invalid palette (Classic - which has no conversion rule)
-        vm.expectRevert(abi.encodeWithSelector(Palettes.InvalidPalette.selector, Constants.CLASSIC, "Cannot convert to this palette"));
-        Palettes.getPaletteConversion(Constants.CLASSIC);
+        vm.expectRevert(abi.encodeWithSelector(Palettes.InvalidPalette.selector, Constants.REDS, "Cannot convert to this palette"));
+        Palettes.getPaletteConversion(Constants.REDS);
     }
 
     function testAllPalettesHaveSevenColors() public {
-        uint8[7] memory paletteIndices = [
-            Constants.CLASSIC,
-            Constants.ICE,
-            Constants.FIRE,
-            Constants.PUNCH,
+        uint8[8] memory paletteIndices = [
+            Constants.REDS,
+            Constants.YELLOWS,
+            Constants.GREENS,
+            Constants.BLUES,
+            Constants.VIOLETS,
             Constants.CHROMATIC,
             Constants.PASTEL,
             Constants.GREYSCALE

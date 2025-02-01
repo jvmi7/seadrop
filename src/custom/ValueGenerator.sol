@@ -213,6 +213,21 @@ contract ValueGenerator is IValueGenerator, Ownable {
     }
 
     /**
+     * Test function to fast forward the reveal of the first 6 tokens
+     */
+    function testFastForwardReveal() external {
+        _updateRandomSeeds(0x0000000000000000000000000000000000000000000000000000000000000001);
+        _updateRandomSeeds(0x0000000000000000000000000000000000000000000000000000000000000002);
+        _updateRandomSeeds(0x0000000000000000000000000000000000000000000000000000000000000003);
+        _updateRandomSeeds(0x0000000000000000000000000000000000000000000000000000000000000004);
+        _updateRandomSeeds(0x0000000000000000000000000000000000000000000000000000000000000005);
+        _updateRandomSeeds(0x0000000000000000000000000000000000000000000000000000000000000006);
+        _updateRandomSeeds(0x0000000000000000000000000000000000000000000000000000000000000007);
+        _lastUpdateBlock = block.timestamp;
+        _currentIteration = 6;
+    }
+
+    /**
      * @notice Generates random values for a specific token
      * @dev Values depend on token's mint iteration and current seeds
      *      Default tokens (iteration 0) use current seeds

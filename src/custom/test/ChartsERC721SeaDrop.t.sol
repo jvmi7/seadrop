@@ -206,10 +206,10 @@ contract ChartsERC721SeaDropTest is Test {
         charts.mintSeaDrop(user1, 4);
 
         // Set different palettes
-        renderer.setTokenPalette(1, Palettes.CLASSIC);
-        renderer.setTokenPalette(2, Palettes.CLASSIC);
-        renderer.setTokenPalette(3, Palettes.CLASSIC);
-        renderer.setTokenPalette(4, Palettes.CLASSIC);
+        renderer.setTokenPalette(1, Palettes.GREENS);
+        renderer.setTokenPalette(2, Palettes.BLUES);
+        renderer.setTokenPalette(3, Palettes.VIOLETS);
+        renderer.setTokenPalette(4, Palettes.YELLOWS);
 
         uint256[] memory tokenIds = new uint256[](4);
         for (uint256 i = 0; i < 4; i++) {
