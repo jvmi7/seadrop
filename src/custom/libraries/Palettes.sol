@@ -117,15 +117,21 @@ library Palettes {
                 surface: SURFACE,
                 barColors: ["#FF8080", "#FCAD81", "#FFEC7D", "#78FF78", "#7EEAFC", "#AE7BFF", "#F680FF"]
             });
-        } if (paletteIndex == Constants.GREYSCALE) {  
+        } if (paletteIndex == Constants.GREYSCALE) {
             return ColorPalette({
                 name: "greyscale",
             background: BACKGROUND,
             surface: SURFACE,
                 barColors: ["#2C3240", "#4B505D", "#6A6E79", "#898D96", "#A7ABB2", "#C6C9CF", "#E5E7EB"]
             });
+        } else if (paletteIndex == Constants.LEGENDARY) {
+            return ColorPalette({
+                name: "legendary",
+                background: BACKGROUND,
+                surface: SURFACE,
+                barColors: ["#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF"]
+            });
         }
-
         revert InvalidPalette(paletteIndex, "Invalid palette index");
     }
 

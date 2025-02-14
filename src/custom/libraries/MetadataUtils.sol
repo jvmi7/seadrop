@@ -12,7 +12,7 @@ import "./ArrayUtils.sol";
 import "./VolatilityUtils.sol";
 import "./PatternUtils.sol";
 import "./BadgeUtils.sol";
-
+import "./LegendaryValues.sol";
 /**
  * @title MetadataUtils
  * @notice Handles the generation of token metadata, including JSON formatting and SVG image generation
@@ -70,12 +70,19 @@ library MetadataUtils {
         pure 
         returns (string memory) 
     {
+        string memory animationUrl = string(
+            abi.encodePacked(
+                metadata.animationUrl,
+                '/?values=[', generateValueString(metadata.values), ']&palette=', Palettes.getColorPalette(metadata.palette).name
+            )
+        );
+
         return string(
             abi.encodePacked(
                 '"name":"', generateName(metadata.id), '",',
                 '"description":"', Constants.DESCRIPTION, '",',
                 '"image":"', generateImageURI(metadata.values, metadata.palette), '",',
-                '"animation_url":"https://charts-by-jvmi-jet.vercel.app/?values=[', generateValueString(metadata.values), ']&palette=', Palettes.getColorPalette(metadata.palette).name, '",',
+                '"animation_url":"', animationUrl, '",',
                 '"values":"[', generateValueString(metadata.values), ']",'
             )
         );
@@ -258,6 +265,10 @@ library MetadataUtils {
         pure 
         returns (string memory) 
     {
+        if (_isLegendary(tokenId)) {
+            return LegendaryValues.getLegendaryValues(tokenId).name;
+        }
+
         bytes memory letters = "ABCDEFXYZ";
         bytes memory result = new bytes(8); // 1 dollar sign + 3 chars + hyphen + 3 chars
         
@@ -314,6 +325,10 @@ library MetadataUtils {
                 '"}'
                 )
         );
+    }
+
+    function _isLegendary(uint256 tokenId) internal pure returns (bool) {
+        return tokenId <= Constants.LEGENDARY_CHARTS_COUNT;
     }
 }
 

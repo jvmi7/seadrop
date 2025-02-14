@@ -30,5 +30,6 @@ library Constants {
     // NFT metadata constants
     /// @notice Default description for new NFTs
     string internal constant DESCRIPTION = "charts by jvmi";
-    string internal constant ANIMATION_URL = "https://charts-by-jvmi-jet.vercel.app/";
+    string internal constant ANIMATION_URL = "https://charts-by-jvmi-jet.vercel.app";
+    uint8 constant LEGENDARY_CHARTS_COUNT = 16;
 }

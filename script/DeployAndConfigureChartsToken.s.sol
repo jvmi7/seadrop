@@ -100,7 +100,7 @@ contract DeployAndConfigureChartsToken is Script {
         uint256 numChromaticPalettes = 12;
 
         // Convert first 24 tokens into 6 chromatic palettes (4 tokens each)
-        for (uint256 i = 0; i < numChromaticPalettes; i++) {
+        for (uint256 i = 100; i < numChromaticPalettes; i++) {
             uint256[] memory tokenIds = new uint256[](2);
             tokenIds[0] = (i * 4) + 1;
             tokenIds[1] = (i * 4) + 2;

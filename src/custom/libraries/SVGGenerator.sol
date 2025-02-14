@@ -4,11 +4,26 @@ pragma solidity 0.8.17;
 import "openzeppelin-contracts/utils/Base64.sol";
 import { Strings } from "openzeppelin-contracts/utils/Strings.sol";
 import { Palettes } from "./Palettes.sol";
+import { Constants } from "./Constants.sol";
 
 /// @title SVG Generator Library
 /// @notice Generates SVG images for visualization of data using different color palettes
 library SVGGenerator {
     using Strings for uint256;
+
+    /// @notice Calculates the offset for color indices
+    function calculateOffset(uint8[7] memory values) internal pure returns (uint8) {
+        // Calculate sum of all values
+        uint16 sum = 0;
+        for (uint256 i = 0; i < 7; i++) {
+            sum += values[i];
+        }
+        
+        // Calculate offset using modulo 7
+        uint8 offset = uint8(sum % 7);
+
+        return offset;
+    }
 
     /// @notice Determines color indices for values based on palette type
     /// @param values Array of values to get colors for
@@ -17,10 +32,11 @@ library SVGGenerator {
     function getColorIndices(uint8[7] memory values, uint8 paletteIndex) internal pure returns (uint8[7] memory) {
         uint8[7] memory colorIndices;
         
-        // For CHROMATIC, PASTEL, and GREYSCALE: use sequential colors
-        if (Palettes.isSpecialPalette(paletteIndex)) {
+        // For CHROMATIC & PASTEL: use sequential colors with offset
+        if (paletteIndex == Constants.CHROMATIC || paletteIndex == Constants.PASTEL) {
+            uint8 offset = calculateOffset(values);
             for (uint256 i = 0; i < 7; i++) {
-                colorIndices[i] = uint8(i);
+                colorIndices[i] = uint8((i + offset) % 7);
             }
         } else {
             // For other palettes: determine color based on value ranges

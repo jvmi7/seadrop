@@ -9,7 +9,7 @@ import { ArrayUtils } from "./libraries/ArrayUtils.sol";
 import { MetadataUtils } from "./libraries/MetadataUtils.sol";
 import { IMetadataRenderer } from "./interfaces/IMetadataRenderer.sol";
 import { Ownable } from "openzeppelin-contracts/access/Ownable.sol";
-
+import { LegendaryValues } from "./libraries/LegendaryValues.sol";
 /**
  * @title MetadataRenderer
  * @notice Handles the generation and management of NFT metadata, including values and palettes
@@ -166,7 +166,8 @@ contract MetadataRenderer is IMetadataRenderer, Ownable {
         return TokenMetadata({
             id: tokenId,
             values: values,
-            palette: _tokenPalettes[tokenId]
+            palette: _tokenPalettes[tokenId],
+            animationUrl: animationUrl
         });
     }
 
@@ -180,15 +181,21 @@ contract MetadataRenderer is IMetadataRenderer, Ownable {
         view 
         returns (uint8[VALUES_ARRAY_SIZE] memory) 
     {
+        if (MetadataUtils._isLegendary(tokenId)) {
+            return LegendaryValues.getLegendaryValues(tokenId).values;
+        }
         return valueGenerator.generateValuesFromSeeds(tokenId);
     }
 
     /**
      * @notice Calculates the initial palette for a token based on its ID
      * @param tokenId The ID of the token to calculate palette for
-     * @return Palette index (0-3)
+     * @return Palette index (0-4)
      */
     function _calculateInitialPalette(uint256 tokenId) private pure returns (uint8) {
+        if (MetadataUtils._isLegendary(tokenId)) {
+            return Constants.LEGENDARY;
+        }
         uint8 mod = uint8(tokenId % 5);
         return mod;
     }

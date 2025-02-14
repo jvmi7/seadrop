@@ -19,7 +19,8 @@ contract MetadataUtilsTest is Test, StringAssertions {
         TokenMetadata memory metadata = TokenMetadata({
             id: 1,
             values: values,
-            palette: 0
+            palette: 0,
+            animationUrl: "https://charts-by-jvmi-jet.vercel.app"
         });
 
         // Act
@@ -61,7 +62,8 @@ contract MetadataUtilsTest is Test, StringAssertions {
         TokenMetadata memory metadata = TokenMetadata({
             id: 1,
             values: values,
-            palette: 0
+            palette: 0,
+            animationUrl: "https://charts-by-jvmi-jet.vercel.app"
         });
 
         // Act
@@ -81,7 +83,8 @@ contract MetadataUtilsTest is Test, StringAssertions {
         TokenMetadata memory metadata = TokenMetadata({
             id: 1,
             values: values,
-            palette: 0
+            palette: 0,
+            animationUrl: "https://charts-by-jvmi-jet.vercel.app"
         });
 
         // Act
