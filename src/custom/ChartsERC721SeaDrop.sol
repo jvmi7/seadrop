@@ -5,6 +5,7 @@ import { ERC721SeaDrop } from "../ERC721SeaDrop.sol";
 import { IMetadataRenderer } from "./interfaces/IMetadataRenderer.sol";
 import { IChartsErrors } from "./interfaces/IChartsErrors.sol";
 import { Palettes } from "./libraries/Palettes.sol";
+import { Constants } from "./libraries/Constants.sol";
 
 /**
  * @title ChartsERC721SeaDrop
@@ -21,11 +22,10 @@ contract ChartsERC721SeaDrop is ERC721SeaDrop, IChartsErrors {
     /*************************************/
     /*              Events               */
     /*************************************/
-    /// @notice Emitted when tokens are converted to a different palette
-    event TokensConverted(
-        uint256[] burnedTokenIds,
-        uint256 newTokenId,
-        uint8 targetPalette
+    /// @notice Emitted when tokens are elevated to a different palette
+    event TokensElevated(
+        uint256 elevateTokenId,
+        uint256 burnTokenId
     );
 
     /// @notice Emitted when the metadata renderer contract is updated
@@ -120,106 +120,78 @@ contract ChartsERC721SeaDrop is ERC721SeaDrop, IChartsErrors {
 
     /**
      * @notice Converts tokens to a different palette by burning existing tokens and minting a new one
-     * @param tokenIds Array of token IDs to convert
-     * @param targetPalette The desired palette for the newly minted token
+     * @param elevateTokenId The ID of the token to elevate
+     * @param burnTokenId The ID of the token to burn
      */
-    function convertTokens(uint256[] calldata tokenIds, uint8 targetPalette)
+    function elevate(uint256 elevateTokenId, uint256 burnTokenId)
         external
         nonReentrant
     {
-        // // Check tokenIds length
-        // if (tokenIds.length == 0 || tokenIds.length > 4) {
-        //     revert InvalidTokenInput(tokenIds);
-        // }
+        // Check if the tokens are valid for elevation
+        _validateElevation(elevateTokenId, burnTokenId);
 
-        // // Get conversion rules from Palettes library
-        // Palettes.PaletteConversion memory conversion = Palettes.getPaletteConversion(targetPalette);
-        // if (conversion.resultPalette == 0) {
-        //     revert ConversionError(0, targetPalette);
-        // }
+        uint8 newPalette = createElevatedPalette(elevateTokenId, burnTokenId);
 
-        // // Check if the correct number of tokens are provided
-        // if (tokenIds.length != conversion.requiredTokenCount) {
-        //     revert InvalidTokenInput(tokenIds);
-        // }
-        
-        // // Check all tokens exist and are owned by sender
-        // for (uint256 i = 0; i < tokenIds.length; i++) {
-        //     if (!_exists(tokenIds[i])) {
-        //         revert TokenError(tokenIds[i]);
-        //     }
-        //     if (ownerOf(tokenIds[i]) != msg.sender) {
-        //         revert NotTokenOwner(msg.sender, tokenIds[i], ownerOf(tokenIds[i]));
-        //     }
-        // }
+        // create a hash from the msg.sender and the two token ids
+        bytes32 seed = keccak256(abi.encodePacked(elevateTokenId, burnTokenId));
 
-        // // Check for duplicate token IDs
-        // if (tokenIds.length > 1) {
-        //     for (uint256 i = 0; i < tokenIds.length - 1; i++) {
-        //         for (uint256 j = i + 1; j < tokenIds.length; j++) {
-        //             if (tokenIds[i] == tokenIds[j]) {
-        //                 revert TokenError(tokenIds[i]);
-        //             }
-        //         }
-        //     }
-        // }
+        // Effects
+        // Generate the metadata for the new token & set it to the 0th token
+        metadataRenderer.setElevatedToken(elevateTokenId, newPalette, seed);
 
-        // // Verify palettes
-        // if (conversion.requiredPalette == type(uint8).max) {
-        //     _validateChromaticConversion(tokenIds);
-        // } else {
-        //     _validatePastelGreyscaleConversion(tokenIds, conversion.requiredPalette);
-        // }
+        // Burn the 1st token
+        _burn(burnTokenId);
 
-        // // Effects
-        // uint256 newTokenId = _totalMinted() + 1;
-        // _safeMint(msg.sender, 1);
-        
-        // for (uint256 i = 0; i < tokenIds.length; i++) {
-        //     _burn(tokenIds[i]);
-        // }
+        if (!metadataRenderer.getIsElevatedToken(elevateTokenId)) {
+            revert TokenError(elevateTokenId);
+        }
 
-        // metadataRenderer.setSpecialToken(newTokenId, conversion.resultPalette);
-
-        // if (!metadataRenderer.getIsSpecialToken(newTokenId)) {
-        //     revert TokenError(newTokenId);
-        // }
-
-        // emit TokensConverted(tokenIds, newTokenId, targetPalette);
+        emit TokensElevated(elevateTokenId, burnTokenId);
     }
 
-    /// @dev Validates tokens for chromatic conversion
-    function _validateChromaticConversion(uint256[] calldata tokenIds) private view {
-        // bool[4] memory basepalettesFound;
-        // for (uint256 i = 0; i < tokenIds.length; i++) {
-        //     uint8 tokenPalette = metadataRenderer.getTokenPalette(tokenIds[i]);
-        //     if (tokenPalette >= Palettes.CHROMATIC) {
-        //         revert InvalidPalette(tokenPalette);
-        //     }
-        //     if (basepalettesFound[tokenPalette]) {
-        //         revert ConversionError(tokenPalette, Palettes.CHROMATIC);
-        //     }
-        //     basepalettesFound[tokenPalette] = true;
-        // }
-        
-        // // Verify all palettes were found
-        // for (uint256 i = 0; i < 5; i++) {
-        //     if (!basepalettesFound[i]) {
-        //         revert ConversionError(uint8(i), Palettes.CHROMATIC);
-        //     }
-        // }
+    function createElevatedPalette(uint256 elevateTokenId, uint256 burnTokenId) private view returns (uint8) {
+        uint8 elevatePalette = metadataRenderer.getTokenPalette(elevateTokenId);
+        uint8 burnPalette = metadataRenderer.getTokenPalette(burnTokenId);
+
+        if (elevatePalette < Constants.CHROMATIC && burnPalette < Constants.CHROMATIC) {
+            return Constants.CHROMATIC;
+        }
+        if (elevatePalette == Constants.CHROMATIC && burnPalette == Constants.CHROMATIC) {
+            return Constants.PASTEL;
+        }
+        if (elevatePalette == Constants.PASTEL && burnPalette == Constants.PASTEL) {
+            return Constants.GREYSCALE;
+        }
+        revert ElevateError(elevateTokenId, burnTokenId);
     }
 
-    /// @dev Validates tokens for standard conversion
-    function _validatePastelGreyscaleConversion(
-        uint256[] calldata tokenIds, 
-        uint8 requiredPalette
-    ) private view {
-        // for (uint256 i = 0; i < tokenIds.length; i++) {
-        //     uint8 tokenPalette = metadataRenderer.getTokenPalette(tokenIds[i]);
-        //     if (tokenPalette != requiredPalette) {
-        //         revert ConversionError(tokenPalette, requiredPalette);
-        //     }
-        // }
+    function _validateElevation(uint256 elevateTokenId, uint256 burnTokenId) private view {
+        // Prevent duplicate token IDs
+        if (burnTokenId == elevateTokenId) revert ElevateError(elevateTokenId, burnTokenId);
+        
+        // Check existence and ownership of both tokens
+        if (!_exists(elevateTokenId) || ownerOf(elevateTokenId) != msg.sender) {
+            revert NotTokenOwner(msg.sender, elevateTokenId, _exists(elevateTokenId) ? ownerOf(elevateTokenId) : address(0));
+        }
+        if (!_exists(burnTokenId) || ownerOf(burnTokenId) != msg.sender) {
+            revert NotTokenOwner(msg.sender, burnTokenId, _exists(burnTokenId) ? ownerOf(burnTokenId) : address(0));
+        }
+
+        // Validate palette levels are the same for both tokens
+        uint8 elevatePalette = metadataRenderer.getTokenPalette(elevateTokenId);
+        uint8 burnPalette = metadataRenderer.getTokenPalette(burnTokenId);
+
+        // Cannot burn a greyscale token
+        if (elevatePalette == Constants.GREYSCALE || burnPalette == Constants.GREYSCALE) {
+            revert ElevateError(elevateTokenId, burnTokenId);
+        }
+
+        // For chromatic, pastel, or greyscale, palettes must match exactly. 
+        if ((elevatePalette == Constants.CHROMATIC && burnPalette == Constants.CHROMATIC) ||
+            (elevatePalette == Constants.PASTEL && burnPalette == Constants.PASTEL)) {
+            if (elevatePalette != burnPalette) {
+                revert ElevateError(elevateTokenId, burnTokenId);
+            }
+        }
     }
 }

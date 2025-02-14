@@ -101,11 +101,10 @@ contract DeployAndConfigureChartsToken is Script {
 
         // Convert first 24 tokens into 6 chromatic palettes (4 tokens each)
         for (uint256 i = 0; i < numChromaticPalettes; i++) {
-            uint256[] memory tokenIds = new uint256[](4);
-            for (uint256 j = 0; j < 4; j++) {
-                tokenIds[j] = (i * 4) + j + 1;
-            }
-            token.convertTokens(tokenIds, 4);
+            uint256[] memory tokenIds = new uint256[](2);
+            tokenIds[0] = (i * 4) + 1;
+            tokenIds[1] = (i * 4) + 2;
+            token.elevate(tokenIds[0], tokenIds[1]);
         }
 
         valueGenerator.testFastForwardReveal();

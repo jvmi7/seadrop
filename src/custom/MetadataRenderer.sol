@@ -37,14 +37,14 @@ contract MetadataRenderer is IMetadataRenderer, Ownable {
 
     /// @notice Maps token IDs to their color palettes
     mapping(uint256 => uint8) private _tokenPalettes;
-    /// @notice Tracks whether a token is a special token
-    mapping(uint256 => bool) private _isSpecialToken;
+    /// @notice Tracks whether a token is an elevated token
+    mapping(uint256 => bool) private _isElevatedToken;
 
     /*************************************/
     /*              Errors               */
     /*************************************/
     error OnlyNFTContract();
-    error InvalidSpecialPalette();
+    error InvalidElevatedPalette();
 
     /*************************************/
     /*              Constructor          */
@@ -88,23 +88,12 @@ contract MetadataRenderer is IMetadataRenderer, Ownable {
     }
 
     /**
-     * @notice Checks if a token is marked as special
+     * @notice Checks if a token is marked as elevated
      * @param tokenId The ID of the token to check
-     * @return Boolean indicating if the token is special
+     * @return Boolean indicating if the token is elevated
      */
-    function getIsSpecialToken(uint256 tokenId) external view returns (bool) {
-        return _isSpecialToken[tokenId];
-    }
-    
-    /**
-     * @notice Gets the number of revealed values for a token
-     * @param tokenId The ID of the token to check
-     * @return Number of revealed values
-     */
-    function getRevealedValuesCount(uint256 tokenId) external view returns (uint256) {
-        if (!_isSpecialToken[tokenId]) return VALUES_ARRAY_SIZE;
-        return valueGenerator.getCurrentIteration() - 
-               valueGenerator.getTokenMintIteration(tokenId);
+    function getIsElevatedToken(uint256 tokenId) external view returns (bool) {
+        return _isElevatedToken[tokenId];
     }
 
     /**
@@ -127,16 +116,16 @@ contract MetadataRenderer is IMetadataRenderer, Ownable {
     }
 
     /**
-     * @notice Sets a token as a special token with a specific palette
-     * @param tokenId The ID of the token to set as special
-     * @param palette The palette of the special token
-     * @dev Only callable by NFT contract and requires special palette range
+     * @notice Sets a token as an elevated token with a specific palette
+     * @param tokenId The ID of the token to set as elevated
+     * @param palette The palette of the elevated token
+     * @dev Only callable by NFT contract and requires elevated palette range
      */
-    function setSpecialToken(uint256 tokenId, uint8 palette) external onlyNFTContract {
-        if (palette < Constants.CHROMATIC) revert InvalidSpecialPalette();
-        _isSpecialToken[tokenId] = true;
+    function setElevatedToken(uint256 tokenId, uint8 palette, bytes32 seed) external onlyNFTContract {
+        if (palette < Constants.CHROMATIC || palette > Constants.GREYSCALE) revert InvalidElevatedPalette();
+        _isElevatedToken[tokenId] = true;
         _tokenPalettes[tokenId] = palette;
-        valueGenerator.setTokenMintIteration(tokenId);
+        valueGenerator.setTokenValuesSeed(tokenId, seed);
     }
 
     /**

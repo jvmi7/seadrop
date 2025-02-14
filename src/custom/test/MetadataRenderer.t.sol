@@ -8,11 +8,28 @@ import "../interfaces/IValueGenerator.sol";
 // Mock contract for ValueGenerator
 contract MockValueGenerator is IValueGenerator {
     uint256 private currentIteration = 1;
-    mapping(uint256 => uint256) private tokenMintIterations;
     mapping(uint256 => uint8[7]) private tokenValues;
     bytes32[7] private randomSeeds;
+    mapping(uint256 => bytes32) private tokenValuesSeeds;
+    bytes32 private elevatedTokenSeed;
 
     // Add missing interface implementations
+    function updateGenesisTokenSeeds() external {
+        // Mock implementation - doesn't need to do anything for tests
+    }
+
+    function updateElevatedTokenSeed() external {
+        // Mock implementation - doesn't need to do anything for tests
+    }
+
+    function getGenesisTokenSeeds() external view returns (bytes32[7] memory) {
+        return randomSeeds;
+    }
+
+    function getElevatedTokenSeed() external view returns (bytes32) {
+        return elevatedTokenSeed;
+    }
+
     function updateRandomSeeds() external {
         // Mock implementation - doesn't need to do anything for tests
     }
@@ -21,17 +38,8 @@ contract MockValueGenerator is IValueGenerator {
         return randomSeeds;
     }
 
-    // Existing implementations
-    function getCurrentIteration() external view returns (uint256) {
-        return currentIteration;
-    }
-
-    function setTokenMintIteration(uint256 tokenId) external {
-        tokenMintIterations[tokenId] = currentIteration;
-    }
-
-    function getTokenMintIteration(uint256 tokenId) external view returns (uint256) {
-        return tokenMintIterations[tokenId];
+    function setTokenValuesSeed(uint256 tokenId, bytes32 seed) external {
+        tokenValuesSeeds[tokenId] = seed;
     }
 
     function generateValuesFromSeeds(uint256 tokenId) external view returns (uint8[7] memory) {
@@ -47,7 +55,7 @@ contract MockValueGenerator is IValueGenerator {
         tokenValues[tokenId] = values;
     }
 
-    function setMockRandomSeeds(bytes32[7] memory seeds) external {
+    function setMockGenesisTokenSeeds(bytes32[7] memory seeds) external {
         randomSeeds = seeds;
     }
 
@@ -92,41 +100,24 @@ contract MetadataRendererTest is Test {
         vm.stopPrank();
     }
 
-    function testSetSpecialToken() public {
+    function testSetElevatedToken() public {
         vm.startPrank(nftContract);
         
-        uint8 specialPalette = 4; // Assuming CHROMATIC = 4
-        renderer.setSpecialToken(1, specialPalette);
+        uint8 elevatedPalette = 4; // Assuming CHROMATIC = 4
+        renderer.setElevatedToken(1, elevatedPalette, bytes32(0));
         
-        assertTrue(renderer.getIsSpecialToken(1));
-        assertEq(renderer.getTokenPalette(1), specialPalette);
+        assertTrue(renderer.getIsElevatedToken(1));
+        assertEq(renderer.getTokenPalette(1), elevatedPalette);
         
         vm.stopPrank();
     }
 
-    function testSetSpecialTokenInvalidPalette() public {
+    function testSetElevatedTokenInvalidPalette() public {
         vm.startPrank(nftContract);
         
         uint8 invalidPalette = 3; // Below CHROMATIC
-        vm.expectRevert(MetadataRenderer.InvalidSpecialPalette.selector);
-        renderer.setSpecialToken(1, invalidPalette);
-        
-        vm.stopPrank();
-    }
-
-    function testGetRevealedValuesCount() public {
-        vm.startPrank(nftContract);
-        
-        // Regular token should always return 7
-        assertEq(renderer.getRevealedValuesCount(1), 7);
-        
-        // Special token should return based on iterations
-        uint8 specialPalette = 4;
-        renderer.setSpecialToken(2, specialPalette);
-        assertEq(renderer.getRevealedValuesCount(2), 0);
-        
-        valueGenerator.incrementIteration();
-        assertEq(renderer.getRevealedValuesCount(2), 1);
+        vm.expectRevert(MetadataRenderer.InvalidElevatedPalette.selector);
+        renderer.setElevatedToken(1, invalidPalette, bytes32(0));
         
         vm.stopPrank();
     }
@@ -138,7 +129,7 @@ contract MetadataRendererTest is Test {
         renderer.setInitialMetadata(1);
         
         vm.expectRevert(MetadataRenderer.OnlyNFTContract.selector);
-        renderer.setSpecialToken(1, 4);
+        renderer.setElevatedToken(1, 4, bytes32(0));
         
         vm.stopPrank();
     }

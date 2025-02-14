@@ -14,4 +14,5 @@ interface IChartsErrors {
     error TokenError(uint256 tokenId);
     error MetadataError();
     error ConversionError(uint8 fromPalette, uint8 toPalette);
+    error ElevateError(uint256 elevateTokenId, uint256 burnTokenId);
 }

@@ -10,7 +10,7 @@ import "../libraries/Palettes.sol";
 // Mock MetadataRenderer contract for testing
 contract MockMetadataRenderer is IMetadataRenderer {
     mapping(uint256 => uint8) public tokenPalettes;
-    mapping(uint256 => bool) public specialTokens;
+    mapping(uint256 => bool) public elevatedTokens;
     address public nftContractAddress;
     IValueGenerator public valueGen;
 
@@ -23,17 +23,18 @@ contract MockMetadataRenderer is IMetadataRenderer {
     }
 
 
-    function setSpecialToken(uint256 tokenId, uint8 palette) external {
-        specialTokens[tokenId] = true;
+    function setElevatedToken(uint256 tokenId, uint8 palette, bytes32 seed) external {
+        elevatedTokens[tokenId] = true;
         tokenPalettes[tokenId] = palette;
+        valueGen.setTokenValuesSeed(tokenId, seed);
     }
 
     function getTokenPalette(uint256 tokenId) external view returns (uint8) {
         return tokenPalettes[tokenId];
     }
 
-    function getIsSpecialToken(uint256 tokenId) external view returns (bool) {
-        return specialTokens[tokenId];
+    function getIsElevatedToken(uint256 tokenId) external view returns (bool) {
+        return elevatedTokens[tokenId];
     }
 
     // Required interface implementations
@@ -71,7 +72,7 @@ contract ChartsERC721SeaDropTest is Test {
     address public user1;
     address public user2;
 
-    event TokensConverted(uint256[] burnedTokenIds, uint256 newTokenId, uint8 targetPalette);
+    event TokensElevated(uint256 elevateTokenId, uint256 burnTokenId);
     event MetadataRendererUpdated(address indexed oldRenderer, address indexed newRenderer);
 
     function setUp() public {
@@ -133,11 +134,11 @@ contract ChartsERC721SeaDropTest is Test {
 
         vm.prank(user1);
         vm.expectEmit(true, true, true, true);
-        emit TokensConverted(tokenIds, 5, Constants.CHROMATIC);
-        charts.convertTokens(tokenIds, Constants.CHROMATIC);
+        emit TokensElevated(tokenIds[0], tokenIds[1]);
+        charts.elevate(tokenIds[0], tokenIds[1]);
 
         // Verify conversion
-        assertTrue(renderer.getIsSpecialToken(5));
+        assertTrue(renderer.getIsElevatedToken(5));
         assertEq(renderer.getTokenPalette(5), Constants.CHROMATIC);
     }
 
@@ -159,10 +160,10 @@ contract ChartsERC721SeaDropTest is Test {
 
         vm.prank(user1);
         vm.expectEmit(true, true, true, true);
-        emit TokensConverted(tokenIds, 4, Constants.PASTEL);
-        charts.convertTokens(tokenIds, Constants.PASTEL);
+        emit TokensElevated(tokenIds[0], tokenIds[1]);
+        charts.elevate(tokenIds[0], tokenIds[1]);
 
-        assertTrue(renderer.getIsSpecialToken(4));
+        assertTrue(renderer.getIsElevatedToken(4));
         assertEq(renderer.getTokenPalette(4), Constants.PASTEL);
     }
 
@@ -184,21 +185,21 @@ contract ChartsERC721SeaDropTest is Test {
 
         vm.prank(user1);
         vm.expectEmit(true, true, true, true);
-        emit TokensConverted(tokenIds, 3, Constants.GREYSCALE);
-        charts.convertTokens(tokenIds, Constants.GREYSCALE);
+        emit TokensElevated(tokenIds[0], tokenIds[1]);
+        charts.elevate(tokenIds[0], tokenIds[1]);
 
-        assertTrue(renderer.getIsSpecialToken(3));
+        assertTrue(renderer.getIsElevatedToken(3));
         assertEq(renderer.getTokenPalette(3), Constants.GREYSCALE);
     }
 
     function testConvertTokensRevertInvalidInput() public {
         uint256[] memory tokenIds = new uint256[](0);
         vm.expectRevert(abi.encodeWithSelector(IChartsErrors.InvalidTokenInput.selector, tokenIds));
-        charts.convertTokens(tokenIds, Constants.PASTEL);
+        charts.elevate(tokenIds[0], tokenIds[1]);
 
         tokenIds = new uint256[](5);
         vm.expectRevert(abi.encodeWithSelector(IChartsErrors.InvalidTokenInput.selector, tokenIds));
-        charts.convertTokens(tokenIds, Constants.PASTEL);
+        charts.elevate(tokenIds[0], tokenIds[1]);
     }
 
     function testConvertTokensRevertWrongPalette() public {
@@ -218,7 +219,7 @@ contract ChartsERC721SeaDropTest is Test {
 
         vm.prank(user1);
         vm.expectRevert();
-        charts.convertTokens(tokenIds, 1);
+        charts.elevate(tokenIds[0], tokenIds[1]);
     }
 
     function testTokenURI() public {

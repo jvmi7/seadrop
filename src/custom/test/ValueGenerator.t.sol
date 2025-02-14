@@ -26,50 +26,33 @@ contract ValueGeneratorTest is Test {
     function test_InitialState() public {
         assertEq(generator.s_upkeepAddress(), upkeep);
         assertEq(generator._metadataRendererAddress(), renderer);
-        assertEq(generator.getCurrentIteration(), 0);
-        assertEq(generator._requiredInterval(), Constants.DEFAULT_INTERVAL);
     }
 
-    function test_UpdateRandomSeeds() public {
+    function test_updateGenesisTokenSeeds() public {
         // Warp time forward to allow update
         vm.warp(block.timestamp + 24 hours);
         
         // Test update from owner
         vm.expectEmit(true, false, false, true);
         emit SeedUpdated(address(this), block.timestamp);
-        generator.updateRandomSeeds();
+        generator.updateGenesisTokenSeeds();
         
         // Test update from upkeep
         vm.warp(block.timestamp + 24 hours);
         vm.prank(upkeep);
-        generator.updateRandomSeeds();
+        generator.updateGenesisTokenSeeds();
         
-        assertEq(generator.getCurrentIteration(), 2);
     }
 
-    function test_UpdateRandomSeedsRevert() public {
+    function test_updateGenesisTokenSeedsRevert() public {
         // Should revert if called too soon
         vm.expectRevert(ValueGenerator.InsufficientTimePassed.selector);
-        generator.updateRandomSeeds();
+        generator.updateGenesisTokenSeeds();
 
         // Should revert if called by unauthorized address
         vm.prank(makeAddr("unauthorized"));
         vm.expectRevert(ValueGenerator.UnauthorizedCaller.selector);
-        generator.updateRandomSeeds();
-    }
-
-    function test_SetTokenMintIteration() public {
-        uint256 tokenId = 1;
-
-        // Should revert if not called by renderer
-        vm.expectRevert(ValueGenerator.UnauthorizedMetadataRenderer.selector);
-        generator.setTokenMintIteration(tokenId);
-
-        // Should succeed when called by renderer
-        vm.prank(renderer);
-        generator.setTokenMintIteration(tokenId);
-        
-        assertEq(generator.getTokenMintIteration(tokenId), 0);
+        generator.updateGenesisTokenSeeds();
     }
 
     function test_GenerateValuesFromSeeds() public {
@@ -78,11 +61,10 @@ contract ValueGeneratorTest is Test {
         // Update seeds a few times
         uint256 currentTime = block.timestamp;
         for (uint256 i = 0; i < 3; i++) {
-            currentTime += generator._requiredInterval();
             // Advance both time and block number
             vm.warp(currentTime);
             vm.roll(block.number + 1);
-            generator.updateRandomSeeds();
+            generator.updateGenesisTokenSeeds();
         }
 
         // Test default token (iteration 0)
@@ -101,22 +83,6 @@ contract ValueGeneratorTest is Test {
         
         assertTrue(hasNonZeroValue, "Should have at least one non-zero value");
         assertTrue(defaultValues[2] != 0, "Should have at least one non-zero value");
-
-        // Test special token
-        vm.prank(renderer);
-        generator.setTokenMintIteration(tokenId);
-        
-        uint8[7] memory specialValues = generator.generateValuesFromSeeds(tokenId);
-      
-        // For special tokens, we expect values based on the seeds that became
-        // available after the token was minted. Some or all might be zero
-        // depending on timing and implementation.
-        for (uint256 i = 0; i < 7; i++) {
-            if (specialValues[i] != 0) {
-                assertTrue(specialValues[i] <= Constants.MAX_RANDOM_VALUE,
-                    "Special value exceeds MAX_RANDOM_VALUE");
-            }
-        }
     }
 
     function test_SetUpkeepAddress() public {
@@ -143,21 +109,9 @@ contract ValueGeneratorTest is Test {
         assertEq(generator._metadataRendererAddress(), newRenderer);
     }
 
-    function test_GetRandomSeeds() public {
-        bytes32[7] memory seeds = generator.getRandomSeeds();
+    function test_getGenesisTokenSeeds() public {
+        bytes32[7] memory seeds = generator.getGenesisTokenSeeds();
         assertEq(seeds.length, 7);
-    }
-
-    function test_SetRequiredInterval() public {
-        uint256 newInterval = 12 hours;
-        
-        // Should revert if zero interval
-        vm.expectRevert(ValueGenerator.InvalidInterval.selector);
-        generator.setRequiredInterval(0);
-        
-        // Should succeed with valid interval
-        generator.setRequiredInterval(newInterval);
-        assertEq(generator._requiredInterval(), newInterval);
     }
 
     function test_GenerateValuesFromSeedsWithEmptySeeds() public {
@@ -174,9 +128,8 @@ contract ValueGeneratorTest is Test {
         uint256 tokenId = 1;
         
         // Update seeds only once
-        vm.warp(block.timestamp + generator._requiredInterval());
         vm.roll(block.number + 1);
-        generator.updateRandomSeeds();
+        generator.updateGenesisTokenSeeds();
         
         uint8[7] memory values = generator.generateValuesFromSeeds(tokenId);
         
@@ -194,9 +147,8 @@ contract ValueGeneratorTest is Test {
         tokenIds[2] = 3;
         
         // Update seeds
-        vm.warp(block.timestamp + generator._requiredInterval());
         vm.roll(block.number + 1);
-        generator.updateRandomSeeds();
+        generator.updateGenesisTokenSeeds();
         
         // Generate values for different tokens
         uint8[7] memory values1 = generator.generateValuesFromSeeds(tokenIds[0]);
@@ -207,95 +159,13 @@ contract ValueGeneratorTest is Test {
         assertTrue(values1[0] != values2[0] || values2[0] != values3[0]);
     }
 
-    function test_SpecialTokenValueGeneration() public {
-        uint256 tokenId = 1;
-        
-        // Set token as special (non-zero iteration)
-        vm.startPrank(renderer);
-        generator.setTokenMintIteration(tokenId);
-        vm.stopPrank();
-        
-        // Update seeds multiple times
-        for (uint256 i = 0; i < 7; i++) {
-            vm.warp(block.timestamp + generator._requiredInterval());
-            vm.roll(block.number + 1);
-            generator.updateRandomSeeds();
-        }
-        
-        uint8[7] memory values = generator.generateValuesFromSeeds(tokenId);
-        
-        // Verify values are within expected range
-        for (uint256 i = 0; i < 7; i++) {
-            if (values[i] != 0) {
-                assertTrue(values[i] <= Constants.MAX_RANDOM_VALUE);
-                assertTrue(values[i] > 0);
-            }
-        }
-    }
-
-    function test_ConsecutiveUpdates() public {
-        // Try to update seeds consecutively
-        vm.warp(block.timestamp + generator._requiredInterval());
-        vm.roll(block.number + 1);
-        generator.updateRandomSeeds();
-        
-        // Second update should fail
-        vm.expectRevert(ValueGenerator.InsufficientTimePassed.selector);
-        generator.updateRandomSeeds();
-        
-        // Update after interval should succeed
-        vm.warp(block.timestamp + generator._requiredInterval());
-        vm.roll(block.number + 1);
-        generator.updateRandomSeeds();
-        
-        assertEq(generator.getCurrentIteration(), 2);
-    }
-
-    function test_TokenMintIterationMultipleTokens() public {
-        vm.startPrank(renderer);
-        
-        // Set iterations for multiple tokens
-        generator.setTokenMintIteration(1);
-        vm.stopPrank();
-
-        // Update seeds (as owner)
-        vm.warp(block.timestamp + generator._requiredInterval());
-        vm.roll(block.number + 1);
-        generator.updateRandomSeeds();
-        
-        vm.prank(renderer);
-        generator.setTokenMintIteration(2);
-        
-        // Verify different iterations
-        assertEq(generator.getTokenMintIteration(1), 0);
-        assertEq(generator.getTokenMintIteration(2), 1);
-    }
-
-    function test_UpdateRandomSeedsAsUpkeep() public {
-        vm.startPrank(upkeep);
-        
-        // Should succeed after required interval
-        vm.warp(block.timestamp + generator._requiredInterval());
-        vm.roll(block.number + 1);
-        generator.updateRandomSeeds();
-        
-        uint256 firstIteration = generator.getCurrentIteration();
-        assertEq(firstIteration, 1);
-        
-        // Should fail immediately after
-        vm.expectRevert(ValueGenerator.InsufficientTimePassed.selector);
-        generator.updateRandomSeeds();
-        
-        vm.stopPrank();
-    }
 
     function test_TokenValueConsistency() public {
         uint256 tokenId = 1;
         
         // Update seeds
-        vm.warp(block.timestamp + generator._requiredInterval());
         vm.roll(block.number + 1);
-        generator.updateRandomSeeds();
+        generator.updateGenesisTokenSeeds();
         
         // Generate values twice for same token
         uint8[7] memory values1 = generator.generateValuesFromSeeds(tokenId);
@@ -312,9 +182,8 @@ contract ValueGeneratorTest is Test {
         
         // Update seeds multiple times
         for (uint256 i = 0; i < 7; i++) {
-            vm.warp(block.timestamp + generator._requiredInterval());
             vm.roll(block.number + 1);
-            generator.updateRandomSeeds();
+            generator.updateGenesisTokenSeeds();
         }
         
         uint8[7] memory values = generator.generateValuesFromSeeds(tokenId);
@@ -349,35 +218,5 @@ contract ValueGeneratorTest is Test {
         
         vm.expectRevert(ValueGenerator.InvalidMetadataRenderer.selector);
         generator.setMetadataRenderer(address(0));
-    }
-
-    function test_MultipleTokensWithSameIteration() public {
-        vm.startPrank(renderer);
-        
-        // Set same iteration for multiple tokens
-        for (uint256 i = 1; i <= 3; i++) {
-            generator.setTokenMintIteration(i);
-        }
-        vm.stopPrank();
-        
-        // Update seeds
-        vm.warp(block.timestamp + generator._requiredInterval());
-        vm.roll(block.number + 1);
-        generator.updateRandomSeeds();
-        
-        // Generate values for all tokens
-        uint8[7] memory values1 = generator.generateValuesFromSeeds(1);
-        uint8[7] memory values2 = generator.generateValuesFromSeeds(2);
-        uint8[7] memory values3 = generator.generateValuesFromSeeds(3);
-        
-        // Values should be different for different tokens even with same iteration
-        bool hasDifference = false;
-        for (uint256 i = 0; i < 7; i++) {
-            if (values1[i] != values2[i] || values2[i] != values3[i]) {
-                hasDifference = true;
-                break;
-            }
-        }
-        assertTrue(hasDifference, "Values should be different for different tokens");
     }
 }

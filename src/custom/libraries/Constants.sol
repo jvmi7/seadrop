@@ -25,6 +25,7 @@ library Constants {
     uint8 constant CHROMATIC = 5;
     uint8 constant PASTEL = 6;
     uint8 constant GREYSCALE = 7;
+    uint8 constant LEGENDARY = 8;
 
     // NFT metadata constants
     /// @notice Default description for new NFTs
