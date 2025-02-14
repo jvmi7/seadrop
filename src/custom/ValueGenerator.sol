@@ -175,12 +175,7 @@ contract ValueGenerator is IValueGenerator, Ownable {
      * @param tokenId The ID of the token being minted
      * @param seed The seed used to generate values for the token
      */
-    function setTokenMintIteration(uint256 tokenId) external onlyMetadataRenderer {
-        _tokenMintIteration[tokenId] = _currentIteration;
-    }
-
-    /**
-        _requiredInterval = interval;
+    function setTokenValuesSeed(uint256 tokenId, bytes32 seed) external onlyMetadataRenderer {
         _tokenValuesSeed[tokenId] = keccak256(abi.encodePacked(seed, _elevatedTokenSeed));
     }
 
@@ -188,12 +183,10 @@ contract ValueGenerator is IValueGenerator, Ownable {
     /*              External             */
     /*************************************/
     /**
-     * @notice Updates random seeds after the required interval
+     * @notice Updates genesis token seeds after the required interval
      * @dev Can be called by upkeep address or owner
-     *      Generates new seed, updates array, and increments iteration
+     *      Generates new seed, updates array, and updates last update block
      */
-        uint256 currentTime = block.timestamp;
-        uint256 timeSinceLastUpdate = currentTime - _lastUpdateBlock;
     function updateGenesisTokenSeeds() external onlyUpkeepOrOwner {
         bytes32 newSeed = Utils.getNewRandomSeed();
         _updateGenesisTokenSeeds(newSeed);
@@ -266,7 +259,7 @@ contract ValueGenerator is IValueGenerator, Ownable {
     function _updateGenesisTokenSeeds(bytes32 newSeed) private {
         uint256 emptySlot = ArrayUtils.findEmptySlot(_genesisTokenSeeds);
 
-        if (emptySlot === SEED_ARRAY_SIZE) {
+        if (emptySlot == SEED_ARRAY_SIZE) {
             revert GenesisTokenSeedsArrayFull();
         }
 
@@ -282,7 +275,7 @@ contract ValueGenerator is IValueGenerator, Ownable {
      */
     function _generateSingleValue(bytes32 genesisSeed, bytes32 tokenValuesSeed, uint256 tokenId) 
         private 
-        view 
+        pure 
         returns (uint8) 
     {
         bytes32 combinedSeed = keccak256(abi.encodePacked(genesisSeed, tokenId, tokenValuesSeed));
