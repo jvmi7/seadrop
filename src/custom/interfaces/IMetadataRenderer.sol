@@ -35,6 +35,12 @@ interface IMetadataRenderer {
     /// @notice Sets a token as an elevated token with a specific palette
     function setElevatedToken(uint256 tokenId, uint8 palette, bytes32 seed) external;
 
+    /// @notice Sets the address of the MetadataImplementation contract
+    function setMetadataImplementation(address _metadataImplementation) external;
+
+    /// @notice Sets the address of the ValueGenerator contract
+    function setValueGenerator(address _valueGenerator) external;
+
     /// @notice Generates the complete token URI for a given token
     function generateTokenURI(uint256 tokenId) external view returns (string memory);
 }

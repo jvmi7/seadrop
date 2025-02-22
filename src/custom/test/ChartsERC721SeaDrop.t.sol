@@ -5,6 +5,7 @@ import "forge-std/Test.sol";
 import "../ChartsERC721SeaDrop.sol";
 import "../interfaces/IMetadataRenderer.sol";
 import "../interfaces/IValueGenerator.sol";
+import "../MetadataImplementation.sol";
 import "../libraries/Palettes.sol";
 
 // Mock MetadataRenderer contract for testing
@@ -13,8 +14,17 @@ contract MockMetadataRenderer is IMetadataRenderer {
     mapping(uint256 => bool) public elevatedTokens;
     address public nftContractAddress;
     IValueGenerator public valueGen;
+    MetadataImplementation public metadataImplementation;
+    // Required interface implementations
+    function nftContract() external view returns (address) {
+        return nftContractAddress;
+    }
 
-    function generateTokenURI(uint256) external pure returns (string memory) {
+    function setMetadataImplementation(address _metadataImplementation) external {
+        metadataImplementation = MetadataImplementation(_metadataImplementation);
+    }
+    
+    function generateTokenURI(uint256 tokenId) external view returns (string memory) {
         return "test-uri";
     }
 
@@ -26,7 +36,7 @@ contract MockMetadataRenderer is IMetadataRenderer {
     function setElevatedToken(uint256 tokenId, uint8 palette, bytes32 seed) external {
         elevatedTokens[tokenId] = true;
         tokenPalettes[tokenId] = palette;
-        valueGen.setTokenValuesSeed(tokenId, seed);
+        valueGen.updateStateOnElevate(tokenId, seed);
     }
 
     function getTokenPalette(uint256 tokenId) external view returns (uint8) {
@@ -35,11 +45,6 @@ contract MockMetadataRenderer is IMetadataRenderer {
 
     function getIsElevatedToken(uint256 tokenId) external view returns (bool) {
         return elevatedTokens[tokenId];
-    }
-
-    // Required interface implementations
-    function nftContract() external view returns (address) {
-        return nftContractAddress;
     }
 
     function valueGenerator() external view returns (IValueGenerator) {
@@ -59,9 +64,39 @@ contract MockMetadataRenderer is IMetadataRenderer {
         nftContractAddress = _nftContract;
     }
 
-    function setValueGenerator(IValueGenerator _valueGen) external {
-        valueGen = _valueGen;
+    function setValueGenerator(address _valueGenerator) external override {
+        valueGen = IValueGenerator(_valueGenerator);
     }
+}
+// Mock ValueGenerator contract for testing
+contract MockValueGenerator is IValueGenerator {
+    function updateStateOnElevate(uint256, bytes32) external pure {}
+    
+    function getTokenValue(uint256, uint256) external pure returns (uint256) {
+        return 0;
+    }
+    
+    function getTokenValues(uint256) external pure returns (uint256[] memory) {
+        return new uint256[](0);
+    }
+
+    function generateValuesFromSeeds(uint256) external pure returns (uint8[7] memory) {
+        return [uint8(0), 0, 0, 0, 0, 0, 0];
+    }
+
+    function updateGenesisTokenSeeds() external pure {}
+
+    function updateElevatedTokenSeed() external pure {}
+
+    function getGenesisTokenSeeds() external pure returns (bytes32[7] memory) {
+        return [bytes32(0), bytes32(0), bytes32(0), bytes32(0), bytes32(0), bytes32(0), bytes32(0)];
+    }
+
+    function getElevatedTokenSeed() external pure returns (bytes32) {
+        return bytes32(0);
+    }
+
+    function fastForwardReveal() external pure {}
 }
 
 contract ChartsERC721SeaDropTest is Test {
@@ -94,6 +129,7 @@ contract ChartsERC721SeaDropTest is Test {
         charts.setMaxSupply(100);
     }
 
+    // 1. Setup and Metadata Renderer Tests
     function testSetMetadataRenderer() public {
         address newRenderer = address(0x4);
         vm.expectEmit(true, true, false, false);
@@ -106,6 +142,7 @@ contract ChartsERC721SeaDropTest is Test {
         charts.setMetadataRenderer(address(0));
     }
 
+    // 2. Basic Minting Tests
     function testMintSeaDrop() public {
         vm.startPrank(seaDropAddress);
         charts.mintSeaDrop(user1, 1);
@@ -114,114 +151,7 @@ contract ChartsERC721SeaDropTest is Test {
         vm.stopPrank();
     }
 
-    function testConvertTokensChromatic() public {
-        // Mint 4 tokens
-        vm.startPrank(seaDropAddress);
-        charts.mintSeaDrop(user1, 4);
-        vm.stopPrank();
-
-        // Set different palettes for the tokens
-        renderer.setTokenPalette(1, 0);
-        renderer.setTokenPalette(2, 1);
-        renderer.setTokenPalette(3, 2);
-        renderer.setTokenPalette(4, 3);
-
-        uint256[] memory tokenIds = new uint256[](4);
-        tokenIds[0] = 1;
-        tokenIds[1] = 2;
-        tokenIds[2] = 3;
-        tokenIds[3] = 4;
-
-        vm.prank(user1);
-        vm.expectEmit(true, true, true, true);
-        emit TokensElevated(tokenIds[0], tokenIds[1]);
-        charts.elevate(tokenIds[0], tokenIds[1]);
-
-        // Verify conversion
-        assertTrue(renderer.getIsElevatedToken(5));
-        assertEq(renderer.getTokenPalette(5), Constants.CHROMATIC);
-    }
-
-    function testConvertTokensPastel() public {
-        // Mint 4 tokens of the same palette for Pastel conversion
-        vm.startPrank(seaDropAddress);
-        charts.mintSeaDrop(user1, 3);
-        vm.stopPrank();
-
-        // Set all tokens to palette 0
-        for (uint256 i = 1; i <= 3; i++) {
-            renderer.setTokenPalette(i, Constants.CHROMATIC);
-        }
-
-        uint256[] memory tokenIds = new uint256[](3);
-        for (uint256 i = 0; i < 3; i++) {
-            tokenIds[i] = i + 1;
-        }
-
-        vm.prank(user1);
-        vm.expectEmit(true, true, true, true);
-        emit TokensElevated(tokenIds[0], tokenIds[1]);
-        charts.elevate(tokenIds[0], tokenIds[1]);
-
-        assertTrue(renderer.getIsElevatedToken(4));
-        assertEq(renderer.getTokenPalette(4), Constants.PASTEL);
-    }
-
-    function testConvertTokensGreyscale() public {
-        // Mint 4 tokens of the same palette for Greyscale conversion
-        vm.startPrank(seaDropAddress);
-        charts.mintSeaDrop(user1, 2);
-        vm.stopPrank();
-
-        // Set all tokens to palette 1
-        for (uint256 i = 1; i <= 2; i++) {
-            renderer.setTokenPalette(i, Constants.PASTEL);
-        }
-
-        uint256[] memory tokenIds = new uint256[](2);
-        for (uint256 i = 0; i < 2; i++) {
-            tokenIds[i] = i + 1;
-        }
-
-        vm.prank(user1);
-        vm.expectEmit(true, true, true, true);
-        emit TokensElevated(tokenIds[0], tokenIds[1]);
-        charts.elevate(tokenIds[0], tokenIds[1]);
-
-        assertTrue(renderer.getIsElevatedToken(3));
-        assertEq(renderer.getTokenPalette(3), Constants.GREYSCALE);
-    }
-
-    function testConvertTokensRevertInvalidInput() public {
-        uint256[] memory tokenIds = new uint256[](0);
-        vm.expectRevert(abi.encodeWithSelector(IChartsErrors.InvalidTokenInput.selector, tokenIds));
-        charts.elevate(tokenIds[0], tokenIds[1]);
-
-        tokenIds = new uint256[](5);
-        vm.expectRevert(abi.encodeWithSelector(IChartsErrors.InvalidTokenInput.selector, tokenIds));
-        charts.elevate(tokenIds[0], tokenIds[1]);
-    }
-
-    function testConvertTokensRevertWrongPalette() public {
-        vm.prank(seaDropAddress);
-        charts.mintSeaDrop(user1, 4);
-
-        // Set different palettes
-        renderer.setTokenPalette(1, Constants.GREENS);
-        renderer.setTokenPalette(2, Constants.BLUES);
-        renderer.setTokenPalette(3, Constants.VIOLETS);
-        renderer.setTokenPalette(4, Constants.YELLOWS);
-
-        uint256[] memory tokenIds = new uint256[](4);
-        for (uint256 i = 0; i < 4; i++) {
-            tokenIds[i] = i + 1;
-        }
-
-        vm.prank(user1);
-        vm.expectRevert();
-        charts.elevate(tokenIds[0], tokenIds[1]);
-    }
-
+    // 3. Token URI Tests
     function testTokenURI() public {
         vm.prank(seaDropAddress);
         charts.mintSeaDrop(user1, 1);
@@ -233,4 +163,276 @@ contract ChartsERC721SeaDropTest is Test {
         vm.expectRevert();
         charts.tokenURI(1);
     }
+
+    // 4. Elevation Tests - Successful Cases
+    function testElevateGenesisToChromatic() public {
+        // Setup: Mint two tokens to user1
+        vm.startPrank(seaDropAddress);
+        charts.mintSeaDrop(user1, 2);
+        vm.stopPrank();
+
+        // Set genesis palettes (0-4) for both tokens
+        renderer.setTokenPalette(1, Constants.REDS);
+        renderer.setTokenPalette(2, Constants.GREENS);
+
+        // Setup value generator
+        MockValueGenerator valueGen = new MockValueGenerator();
+        renderer.setValueGenerator(address(valueGen));
+        renderer.setNFTContract(address(charts));
+
+        // Perform elevation
+        vm.startPrank(user1);
+        vm.expectEmit(false, false, false, true);
+        emit TokensElevated(1, 2);
+        charts.elevate(1, 2);
+        vm.stopPrank();
+
+        // Verify results
+        assertEq(renderer.getTokenPalette(1), Constants.CHROMATIC);
+        assertTrue(renderer.getIsElevatedToken(1));
+        vm.expectRevert(); // Should revert when trying to access burned token
+        charts.ownerOf(2);
+    }
+
+    function testElevateChromaticToPastel() public {
+        // Setup: Mint two tokens to user1
+        vm.startPrank(seaDropAddress);
+        charts.mintSeaDrop(user1, 2);
+        vm.stopPrank();
+
+        // Set both tokens to CHROMATIC
+        renderer.setTokenPalette(1, Constants.CHROMATIC);
+        renderer.setTokenPalette(2, Constants.CHROMATIC);
+
+        // Setup value generator
+        MockValueGenerator valueGen = new MockValueGenerator();
+        renderer.setValueGenerator(address(valueGen));
+        renderer.setNFTContract(address(charts));
+
+        // Perform elevation
+        vm.startPrank(user1);
+        charts.elevate(1, 2);
+        vm.stopPrank();
+
+        // Verify results
+        assertEq(renderer.getTokenPalette(1), Constants.PASTEL);
+        assertTrue(renderer.getIsElevatedToken(1));
+    }
+
+    function testElevatePastelToGreyscale() public {
+        // Setup: Mint two tokens to user1
+        vm.startPrank(seaDropAddress);
+        charts.mintSeaDrop(user1, 2);
+        vm.stopPrank();
+
+        // Set both tokens to PASTEL
+        renderer.setTokenPalette(1, Constants.PASTEL);
+        renderer.setTokenPalette(2, Constants.PASTEL);
+
+        // Setup value generator
+        MockValueGenerator valueGen = new MockValueGenerator();
+        renderer.setValueGenerator(address(valueGen));
+        renderer.setNFTContract(address(charts));
+
+        // Perform elevation
+        vm.startPrank(user1);
+        charts.elevate(1, 2);
+        vm.stopPrank();
+
+        // Verify results
+        assertEq(renderer.getTokenPalette(1), Constants.GREYSCALE);
+        assertTrue(renderer.getIsElevatedToken(1));
+        vm.expectRevert(); // Should revert when trying to access burned token
+        charts.ownerOf(2);
+    }
+
+    // 5. Elevation Tests - Error Cases
+    function testElevateRevertNotOwner() public {
+        // Setup: Mint tokens to different users
+        vm.startPrank(seaDropAddress);
+        charts.mintSeaDrop(user1, 1);
+        charts.mintSeaDrop(user2, 1);
+        vm.stopPrank();
+
+        // Try to elevate with tokens owned by different users
+        vm.startPrank(user1);
+        vm.expectRevert(abi.encodeWithSelector(IChartsErrors.NotTokenOwner.selector, user1, 2, user2));
+        charts.elevate(1, 2);
+        vm.stopPrank();
+    }
+
+    function testElevateRevertSameToken() public {
+        // Setup: Mint token to user1
+        vm.startPrank(seaDropAddress);
+        charts.mintSeaDrop(user1, 1);
+        vm.stopPrank();
+
+        // Try to elevate using the same token
+        vm.startPrank(user1);
+        vm.expectRevert(abi.encodeWithSelector(IChartsErrors.ElevateError.selector, 1, 1));
+        charts.elevate(1, 1);
+        vm.stopPrank();
+    }
+
+    function testElevateRevertInvalidPaletteCombination() public {
+        // Setup: Mint two tokens to user1
+        vm.startPrank(seaDropAddress);
+        charts.mintSeaDrop(user1, 2);
+        vm.stopPrank();
+
+        // Set different palette levels
+        renderer.setTokenPalette(1, Constants.CHROMATIC);
+        renderer.setTokenPalette(2, Constants.BLUES); // genesis palette
+
+        // Try to elevate tokens with different palette levels
+        vm.startPrank(user1);
+        vm.expectRevert(abi.encodeWithSelector(IChartsErrors.ElevateError.selector, 1, 2));
+        charts.elevate(1, 2);
+        vm.stopPrank();
+    }
+
+    function testElevateRevertGreyscale() public {
+        // Setup: Mint two tokens to user1
+        vm.startPrank(seaDropAddress);
+        charts.mintSeaDrop(user1, 2);
+        vm.stopPrank();
+
+        // Set one token to greyscale
+        renderer.setTokenPalette(1, Constants.GREYSCALE);
+        renderer.setTokenPalette(2, Constants.PASTEL);
+
+        // Try to elevate with a greyscale token
+        vm.startPrank(user1);
+        vm.expectRevert(abi.encodeWithSelector(IChartsErrors.ElevateError.selector, 1, 2));
+        charts.elevate(1, 2);
+        vm.stopPrank();
+    }
+
+    function testElevateRevertPastelWithChromatic() public {
+        // Setup: Mint two tokens to user1
+        vm.startPrank(seaDropAddress);
+        charts.mintSeaDrop(user1, 2);
+        vm.stopPrank();
+
+        // Set different special palettes
+        renderer.setTokenPalette(1, Constants.PASTEL);
+        renderer.setTokenPalette(2, Constants.CHROMATIC);
+
+        // Try to elevate tokens with mismatched special palettes
+        vm.startPrank(user1);
+        vm.expectRevert(abi.encodeWithSelector(IChartsErrors.ElevateError.selector, 1, 2));
+        charts.elevate(1, 2);
+        vm.stopPrank();
+    }
+
+    function testElevateRevertNonexistentTokens() public {
+        vm.startPrank(user1);
+        vm.expectRevert(); // Should revert when trying to elevate non-existent tokens
+        charts.elevate(999, 1000);
+        vm.stopPrank();
+    }
+
+    function testElevateRevertAfterTransfer() public {
+        // Setup: Mint two tokens to user1
+        vm.startPrank(seaDropAddress);
+        charts.mintSeaDrop(user1, 2);
+        vm.stopPrank();
+
+        // Set basic palettes
+        renderer.setTokenPalette(1, Constants.REDS);
+        renderer.setTokenPalette(2, Constants.REDS);
+
+        // Transfer one token to user2
+        vm.prank(user1);
+        charts.transferFrom(user1, user2, 2);
+
+        // Try to elevate after transfer
+        vm.startPrank(user1);
+        vm.expectRevert(abi.encodeWithSelector(IChartsErrors.NotTokenOwner.selector, user1, 2, user2));
+        charts.elevate(1, 2);
+        vm.stopPrank();
+    }
+
+    function testElevateRevertWithZeroAddress() public {
+        // Setup: Mint token to user1
+        vm.startPrank(seaDropAddress);
+        charts.mintSeaDrop(user1, 1);
+        vm.stopPrank();
+
+        // Set basic palette
+        renderer.setTokenPalette(1, Constants.REDS);
+
+        // Try to elevate with non-existent token (which would return address(0) as owner)
+        vm.startPrank(user1);
+        vm.expectRevert(abi.encodeWithSelector(IChartsErrors.NotTokenOwner.selector, user1, 2, address(0)));
+        charts.elevate(1, 2);
+        vm.stopPrank();
+    }
+
+    // 6. Approval-related Tests
+    function testElevateRevertWhenTokenApproved() public {
+        // Setup: Mint two tokens to user1
+        vm.startPrank(seaDropAddress);
+        charts.mintSeaDrop(user1, 2);
+        vm.stopPrank();
+
+        // Set genesis palettes for both tokens
+        renderer.setTokenPalette(1, Constants.REDS);
+        renderer.setTokenPalette(2, Constants.REDS);
+
+        // Setup mock OpenSea address
+        address mockOpenSea = address(0x123);
+
+        // User1 approves token for sale on OpenSea
+        vm.prank(user1);
+        charts.approve(mockOpenSea, 1);
+
+        // Try to elevate when one token is approved
+        vm.startPrank(user1);
+        vm.expectRevert(abi.encodeWithSelector(IChartsErrors.TokenApprovedForTransfer.selector, 1));
+        charts.elevate(1, 2);
+        vm.stopPrank();
+
+        // Verify tokens weren't elevated
+        assertEq(renderer.getTokenPalette(1), Constants.REDS);
+        assertEq(renderer.getTokenPalette(2), Constants.REDS);
+        assertFalse(renderer.getIsElevatedToken(1));
+        assertEq(charts.ownerOf(2), user1); // Ensure token 2 wasn't burned
+    }
+
+    function testClearApprovalBeforeElevate() public {
+        // Setup: Mint two tokens to user1
+        vm.startPrank(seaDropAddress);
+        charts.mintSeaDrop(user1, 2);
+        vm.stopPrank();
+
+        // Set genesis palettes
+        renderer.setTokenPalette(1, Constants.REDS);
+        renderer.setTokenPalette(2, Constants.REDS);
+
+        // Setup value generator
+        MockValueGenerator valueGen = new MockValueGenerator();
+        renderer.setValueGenerator(address(valueGen));
+        renderer.setNFTContract(address(charts));
+
+        // Setup mock OpenSea address and approve
+        address mockOpenSea = address(0x123);
+        vm.prank(user1);
+        charts.approve(mockOpenSea, 1);
+
+        // Clear approval
+        vm.prank(user1);
+        charts.approve(address(0), 1);
+
+        // Now elevation should succeed
+        vm.prank(user1);
+        charts.elevate(1, 2);
+
+        // Verify elevation succeeded
+        assertEq(renderer.getTokenPalette(1), Constants.CHROMATIC);
+        assertTrue(renderer.getIsElevatedToken(1));
+        vm.expectRevert(); // Should revert when trying to access burned token
+        charts.ownerOf(2);
+    }
 }
+

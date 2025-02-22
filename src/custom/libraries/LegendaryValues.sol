@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
+import { Constants } from "./Constants.sol";
 /**
  * @title LegendaryValues
  * @notice Library containing all legendary token values
@@ -141,5 +142,9 @@ library LegendaryValues {
             values: [0, 0, 0, 0, 0, 0, 0],
             name: ""
         });
+    }
+
+    function isLegendary(uint256 tokenId) internal pure returns (bool) {
+      return tokenId <= Constants.LEGENDARY_CHARTS_COUNT;
     }
 }

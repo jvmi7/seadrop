@@ -6,7 +6,7 @@ import { TokenMetadata } from "./types/MetadataTypes.sol";
 import { Constants } from "./libraries/Constants.sol";
 import { IValueGenerator } from "./interfaces/IValueGenerator.sol";
 import { ArrayUtils } from "./libraries/ArrayUtils.sol";
-import { MetadataUtils } from "./libraries/MetadataUtils.sol";
+import { MetadataImplementation } from "./MetadataImplementation.sol";
 import { IMetadataRenderer } from "./interfaces/IMetadataRenderer.sol";
 import { Ownable } from "openzeppelin-contracts/access/Ownable.sol";
 import { LegendaryValues } from "./libraries/LegendaryValues.sol";
@@ -31,14 +31,14 @@ contract MetadataRenderer is IMetadataRenderer, Ownable {
     /// @notice Address of the NFT contract that this renderer serves
     address public immutable nftContract;
     /// @notice Contract that generates the token values
-    IValueGenerator public immutable valueGenerator;
+    IValueGenerator public valueGenerator;
+    /// @notice Contract that implements the metadata generation logic
+    MetadataImplementation public metadataImplementation;
     /// @notice URL for the animation
     string public animationUrl;
-
+    
     /// @notice Maps token IDs to their color palettes
     mapping(uint256 => uint8) private _tokenPalettes;
-    /// @notice Tracks whether a token is an elevated token
-    mapping(uint256 => bool) private _isElevatedToken;
 
     /*************************************/
     /*              Errors               */
@@ -53,13 +53,16 @@ contract MetadataRenderer is IMetadataRenderer, Ownable {
      * @notice Initializes the contract with necessary dependencies
      * @param _nftContract Address of the NFT contract
      * @param _valueGenerator Address of the value generator contract
+     * @param _metadataImplementation Address of the MetadataImplementation contract
      */
     constructor(
         address _nftContract, 
-        address _valueGenerator
+        address _valueGenerator,
+        address _metadataImplementation
     ) {
         nftContract = _nftContract;
         valueGenerator = IValueGenerator(_valueGenerator);
+        metadataImplementation = MetadataImplementation(_metadataImplementation);
         animationUrl = Constants.ANIMATION_URL;
     }
 
@@ -93,7 +96,8 @@ contract MetadataRenderer is IMetadataRenderer, Ownable {
      * @return Boolean indicating if the token is elevated
      */
     function getIsElevatedToken(uint256 tokenId) external view returns (bool) {
-        return _isElevatedToken[tokenId];
+        uint8 palette = _tokenPalettes[tokenId];
+        return palette == Constants.CHROMATIC || palette == Constants.PASTEL || palette == Constants.GREYSCALE;
     }
 
     /**
@@ -123,9 +127,8 @@ contract MetadataRenderer is IMetadataRenderer, Ownable {
      */
     function setElevatedToken(uint256 tokenId, uint8 palette, bytes32 seed) external onlyNFTContract {
         if (palette < Constants.CHROMATIC || palette > Constants.GREYSCALE) revert InvalidElevatedPalette();
-        _isElevatedToken[tokenId] = true;
         _tokenPalettes[tokenId] = palette;
-        valueGenerator.setTokenValuesSeed(tokenId, seed);
+        valueGenerator.updateStateOnElevate(tokenId, seed);
     }
 
     /**
@@ -134,6 +137,24 @@ contract MetadataRenderer is IMetadataRenderer, Ownable {
      */
     function setAnimationUrl(string memory _animationUrl) external onlyOwner {
         animationUrl = _animationUrl;
+    }
+
+    /**
+     * @notice Sets the address of the MetadataImplementation contract
+     * @param _metadataImplementation The new address of the MetadataImplementation contract
+     * @dev Only callable by the contract owner
+     */
+    function setMetadataImplementation(address _metadataImplementation) external onlyOwner {
+        metadataImplementation = MetadataImplementation(_metadataImplementation);
+    }
+
+    /**
+     * @notice Sets the address of the ValueGenerator contract
+     * @param _valueGenerator The new address of the ValueGenerator contract
+     * @dev Only callable by the contract owner
+     */
+    function setValueGenerator(address _valueGenerator) external onlyOwner {
+        valueGenerator = IValueGenerator(_valueGenerator);
     }
 
     /*************************************/
@@ -146,7 +167,7 @@ contract MetadataRenderer is IMetadataRenderer, Ownable {
      */
     function generateTokenURI(uint256 tokenId) external view returns (string memory) {        
         TokenMetadata memory metadata = _createTokenMetadata(tokenId);
-        return MetadataUtils.generateTokenURI(metadata);
+        return metadataImplementation.generateTokenURI(metadata);
     }
 
     /*************************************/
@@ -181,7 +202,7 @@ contract MetadataRenderer is IMetadataRenderer, Ownable {
         view 
         returns (uint8[VALUES_ARRAY_SIZE] memory) 
     {
-        if (MetadataUtils._isLegendary(tokenId)) {
+        if (LegendaryValues.isLegendary(tokenId)) {
             return LegendaryValues.getLegendaryValues(tokenId).values;
         }
         return valueGenerator.generateValuesFromSeeds(tokenId);
@@ -193,7 +214,7 @@ contract MetadataRenderer is IMetadataRenderer, Ownable {
      * @return Palette index (0-4)
      */
     function _calculateInitialPalette(uint256 tokenId) private pure returns (uint8) {
-        if (MetadataUtils._isLegendary(tokenId)) {
+        if (LegendaryValues.isLegendary(tokenId)) {
             return Constants.LEGENDARY;
         }
         uint8 mod = uint8(tokenId % 5);

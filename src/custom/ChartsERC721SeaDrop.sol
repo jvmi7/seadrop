@@ -9,20 +9,19 @@ import { Constants } from "./libraries/Constants.sol";
 
 /**
  * @title ChartsERC721SeaDrop
- * @notice Handles NFT minting, metadata rendering, and palette conversions
- * @dev Extends ERC721SeaDrop to add custom metadata handling and token conversion mechanics
+ * @dev A custom ERC721SeaDrop contract for the charts project that enables elevation
  */
 contract ChartsERC721SeaDrop is ERC721SeaDrop, IChartsErrors {
     /*************************************/
     /*              Storage              */
     /*************************************/
-    /// @notice The metadata renderer contract that generates token URIs and handles metadata
+    /// @notice The metadata renderer contract that handles metadata generation
     IMetadataRenderer public metadataRenderer;
 
     /*************************************/
     /*              Events               */
     /*************************************/
-    /// @notice Emitted when tokens are elevated to a different palette
+    /// @notice Emitted when tokens are elevated
     event TokensElevated(
         uint256 elevateTokenId,
         uint256 burnTokenId
@@ -55,9 +54,6 @@ contract ChartsERC721SeaDrop is ERC721SeaDrop, IChartsErrors {
      * @dev Only callable by contract owner
      */
     function setMetadataRenderer(address _renderer) external onlyOwner {
-        if (_renderer == address(0)) {
-            revert InvalidAddress(_renderer);
-        }
         address oldRenderer = address(metadataRenderer);
         metadataRenderer = IMetadataRenderer(_renderer);
         emit MetadataRendererUpdated(oldRenderer, _renderer);
@@ -130,13 +126,14 @@ contract ChartsERC721SeaDrop is ERC721SeaDrop, IChartsErrors {
         // Check if the tokens are valid for elevation
         _validateElevation(elevateTokenId, burnTokenId);
 
-        uint8 newPalette = createElevatedPalette(elevateTokenId, burnTokenId);
+        // Get the new palette for the elevated token
+        uint8 newPalette = _getElevatedPalette(elevateTokenId, burnTokenId);
 
-        // create a hash from the msg.sender and the two token ids
+        // Create a hash from the two tokenIds
         bytes32 seed = keccak256(abi.encodePacked(elevateTokenId, burnTokenId));
 
         // Effects
-        // Generate the metadata for the new token & set it to the 0th token
+        // Generate the metadata for the new token & set it to the elevate token
         metadataRenderer.setElevatedToken(elevateTokenId, newPalette, seed);
 
         // Burn the 1st token
@@ -149,7 +146,7 @@ contract ChartsERC721SeaDrop is ERC721SeaDrop, IChartsErrors {
         emit TokensElevated(elevateTokenId, burnTokenId);
     }
 
-    function createElevatedPalette(uint256 elevateTokenId, uint256 burnTokenId) private view returns (uint8) {
+    function _getElevatedPalette(uint256 elevateTokenId, uint256 burnTokenId) private view returns (uint8) {
         uint8 elevatePalette = metadataRenderer.getTokenPalette(elevateTokenId);
         uint8 burnPalette = metadataRenderer.getTokenPalette(burnTokenId);
 
@@ -173,8 +170,18 @@ contract ChartsERC721SeaDrop is ERC721SeaDrop, IChartsErrors {
         if (!_exists(elevateTokenId) || ownerOf(elevateTokenId) != msg.sender) {
             revert NotTokenOwner(msg.sender, elevateTokenId, _exists(elevateTokenId) ? ownerOf(elevateTokenId) : address(0));
         }
+        
         if (!_exists(burnTokenId) || ownerOf(burnTokenId) != msg.sender) {
             revert NotTokenOwner(msg.sender, burnTokenId, _exists(burnTokenId) ? ownerOf(burnTokenId) : address(0));
+        }
+
+        // Check if either token is approved for transfer
+        if (getApproved(elevateTokenId) != address(0)) {
+            revert TokenApprovedForTransfer(elevateTokenId);
+        }
+        
+        if (getApproved(burnTokenId) != address(0)) {
+            revert TokenApprovedForTransfer(burnTokenId);
         }
 
         // Validate palette levels are the same for both tokens
@@ -186,9 +193,14 @@ contract ChartsERC721SeaDrop is ERC721SeaDrop, IChartsErrors {
             revert ElevateError(elevateTokenId, burnTokenId);
         }
 
-        // For chromatic, pastel, or greyscale, palettes must match exactly. 
-        if ((elevatePalette == Constants.CHROMATIC && burnPalette == Constants.CHROMATIC) ||
-            (elevatePalette == Constants.PASTEL && burnPalette == Constants.PASTEL)) {
+        // Both tokens must be either special or non-special palettes
+        if (Palettes.isSpecialPalette(elevatePalette) != Palettes.isSpecialPalette(burnPalette)) {
+            revert ElevateError(elevateTokenId, burnTokenId);
+        }
+
+        // For non-special palettes, both must be non-special
+        // For special palettes (CHROMATIC/PASTEL), both must be at the same level
+        if (Palettes.isSpecialPalette(elevatePalette)) {
             if (elevatePalette != burnPalette) {
                 revert ElevateError(elevateTokenId, burnTokenId);
             }

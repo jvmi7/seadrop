@@ -15,4 +15,7 @@ interface IChartsErrors {
     error MetadataError();
     error ConversionError(uint8 fromPalette, uint8 toPalette);
     error ElevateError(uint256 elevateTokenId, uint256 burnTokenId);
+
+    /// @notice Thrown when trying to elevate tokens that are approved for transfer
+    error TokenApprovedForTransfer(uint256 tokenId);
 }

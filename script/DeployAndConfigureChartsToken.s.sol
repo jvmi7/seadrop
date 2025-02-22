@@ -9,6 +9,7 @@ import { ISeaDrop } from "../src/interfaces/ISeaDrop.sol";
 import { PublicDrop } from "../src/lib/SeaDropStructs.sol";
 import { Strings } from "openzeppelin-contracts/utils/Strings.sol";
 import { Constants } from "../src/custom/libraries/Constants.sol";
+import { MetadataImplementation } from "../src/custom/MetadataImplementation.sol";
 
 contract DeployAndConfigureChartsToken is Script {
     using Strings for uint256;
@@ -30,6 +31,7 @@ contract DeployAndConfigureChartsToken is Script {
     ChartsERC721SeaDrop token;
     ValueGenerator valueGenerator;
     MetadataRenderer renderer;
+    MetadataImplementation metadataImplementation;
 
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
@@ -51,12 +53,14 @@ contract DeployAndConfigureChartsToken is Script {
 
         valueGenerator.setUpkeepAddress(chainlinkForwarder);
 
+        // Deploy MetadataImplementation
+        metadataImplementation = new MetadataImplementation();
 
-
-        // Deploy MetadataRenderer
+        // Deploy MetadataRenderer with MetadataImplementation address
         renderer = new MetadataRenderer(
             address(token),
-            address(valueGenerator)
+            address(valueGenerator),
+            address(metadataImplementation)
         );
 
         // Set the MetadataRenderer in the NFT contract
@@ -83,18 +87,18 @@ contract DeployAndConfigureChartsToken is Script {
             )
         );
         
+        // Mint initial tokens
+        ISeaDrop(seadrop).mintPublic{ value: mintPrice * 500 }(
+            address(token),
+            feeRecipient,
+            address(0),
+            500 // quantity
+        );
 
-        for (uint256 i = 0; i < 18; i++) {  
-            // Mint initial tokens
-            ISeaDrop(seadrop).mintPublic{ value: mintPrice * 500 }(
-                address(token),
-                feeRecipient,
-                address(0),
-                500 // quantity
-            );
+        // transfer nfts with token ids 20-25 to an address
+        for (uint256 i = 20; i <= 25; i++) {
+            token.transferFrom(creator, 0xf52c69161f6f22A2A6A0DF110E3F40C2a5a0a702, i);
         }
-
-        
 
         // ===== CHROMATIC =====
         uint256 numChromaticPalettes = 12;
@@ -107,7 +111,7 @@ contract DeployAndConfigureChartsToken is Script {
             token.elevate(tokenIds[0], tokenIds[1]);
         }
 
-        valueGenerator.testFastForwardReveal();
+        valueGenerator.fastForwardReveal();
 
         // // ===== PASTEL =====
         // for (uint256 i = 0; i < numPastelPalettes; i++) {
@@ -117,8 +121,6 @@ contract DeployAndConfigureChartsToken is Script {
         //     }
         //     token.convertTokens(tokenIds, 5);
         // }
-
-        // ===== GREYSCALE =====
 
         // // trade in 4 tokens for a new palette
         // uint256[] memory tokenIds8 = new uint256[](2);

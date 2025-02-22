@@ -3,22 +3,23 @@ pragma solidity 0.8.17;
 
 import { Base64 } from "openzeppelin-contracts/utils/Base64.sol";
 import { Strings } from "openzeppelin-contracts/utils/Strings.sol";
-import "../types/MetadataTypes.sol";
-import "../libraries/Constants.sol";
-import "../libraries/SVGGenerator.sol";
-import "../libraries/Palettes.sol";
-import "../libraries/Utils.sol";
-import "./ArrayUtils.sol";
-import "./VolatilityUtils.sol";
-import "./PatternUtils.sol";
-import "./BadgeUtils.sol";
-import "./LegendaryValues.sol";
+import "./types/MetadataTypes.sol";
+import "./libraries/Constants.sol";
+import "./libraries/SVGGenerator.sol";
+import "./libraries/Palettes.sol";
+import "./libraries/Utils.sol";
+import "./libraries/ArrayUtils.sol";
+import "./libraries/VolatilityUtils.sol";
+import "./libraries/PatternUtils.sol";
+import "./libraries/BadgeUtils.sol";
+import "./libraries/LegendaryValues.sol";
+
 /**
- * @title MetadataUtils
+ * @title MetadataImplementation
  * @notice Handles the generation of token metadata, including JSON formatting and SVG image generation
- * @dev Implemented as a library for gas efficiency and reusability
+ * @dev Implemented as a contract for stateful operations
  */
-library MetadataUtils {
+contract MetadataImplementation {
     using Strings for uint256;
     using Utils for uint8;
     using ArrayUtils for uint8[7];
@@ -34,7 +35,7 @@ library MetadataUtils {
      * @return A base64 encoded data URI containing the complete token metadata
      */
     function generateTokenURI(TokenMetadata memory metadata) 
-        internal 
+        public 
         pure 
         returns (string memory) 
     {
@@ -66,10 +67,21 @@ library MetadataUtils {
      * @return Formatted string containing the basic token properties
      */
     function generateBasicProperties(TokenMetadata memory metadata) 
-        internal 
+        public 
         pure 
         returns (string memory) 
     {
+
+        string memory image = string(
+            abi.encodePacked(
+                "data:image/svg+xml;base64,",
+                SVGGenerator.generateSVG(
+                    metadata.values,
+                    metadata.palette
+                )
+            )
+        );
+
         string memory animationUrl = string(
             abi.encodePacked(
                 metadata.animationUrl,
@@ -81,7 +93,7 @@ library MetadataUtils {
             abi.encodePacked(
                 '"name":"', generateName(metadata.id), '",',
                 '"description":"', Constants.DESCRIPTION, '",',
-                '"image":"', generateImageURI(metadata.values, metadata.palette), '",',
+                '"image":"', image, '",',
                 '"animation_url":"', animationUrl, '",',
                 '"values":"[', generateValueString(metadata.values), ']",'
             )
@@ -95,7 +107,7 @@ library MetadataUtils {
      * @return Formatted string containing the token attributes
      */
     function generateAttributesSection(TokenMetadata memory metadata) 
-        internal 
+        public 
         pure 
         returns (string memory) 
     {
@@ -213,7 +225,6 @@ library MetadataUtils {
             ));
         }
 
-
         // Wrap in attributes array
         return string(
             abi.encodePacked(
@@ -224,70 +235,6 @@ library MetadataUtils {
         );
     }
 
-    /*************************************/
-    /*         Utility Functions         */
-    /*************************************/
-
-    /**
-     * @notice Generates the image URI for a token using SVG
-     * @dev Combines SVG generation with base64 encoding for on-chain storage
-     * @param values The array of values to use in the SVG generation
-     * @param palette The palette index to use for colors
-     * @return A base64 encoded SVG data URI
-     */
-    function generateImageURI(
-        uint8[7] memory values,
-        uint8 palette
-    ) 
-        internal 
-        pure 
-        returns (string memory) 
-    {
-        return string(
-            abi.encodePacked(
-                "data:image/svg+xml;base64,",
-                SVGGenerator.generateSVG(
-                    values,
-                    palette
-                )
-            )
-        );
-    }
-
-    /**
-     * @notice Generates the name for a token based on its ID
-     * @dev Creates a deterministic but non-sequential name using the format "$ABC-DEF"
-     * @param tokenId The ID of the token
-     * @return The formatted name string using A-F,X-Z characters
-     */
-    function generateName(uint256 tokenId) 
-        internal 
-        pure 
-        returns (string memory) 
-    {
-        if (_isLegendary(tokenId)) {
-            return LegendaryValues.getLegendaryValues(tokenId).name;
-        }
-
-        bytes memory letters = "ABCDEFXYZ";
-        bytes memory result = new bytes(8); // 1 dollar sign + 3 chars + hyphen + 3 chars
-        
-        // Create a pseudo-random but deterministic number from tokenId
-        uint256 hash = uint256(keccak256(abi.encodePacked(tokenId)));
-        
-        // Add dollar sign and use hash to get deterministic but non-sequential letters
-        result[0] = "$";
-        result[1] = letters[hash % 9];
-        result[2] = letters[(hash / 9) % 9];
-        result[3] = letters[(hash / 81) % 9];
-        result[4] = "-";
-        result[5] = letters[(hash / 729) % 9];
-        result[6] = letters[(hash / 6561) % 9];
-        result[7] = letters[(hash / 59049) % 9];
-        
-        return string(result);
-    }
-
     /**
      * @notice Converts an array of values into a comma-separated string
      * @dev Used for storing raw values in token metadata
@@ -295,7 +242,7 @@ library MetadataUtils {
      * @return Comma-separated string of values
      */
     function generateValueString(uint8[7] memory values) 
-        internal 
+        public 
         pure 
         returns (string memory) 
     {
@@ -308,14 +255,67 @@ library MetadataUtils {
     }
 
     /*************************************/
+    /*         Utility Functions         */
+    /*************************************/
+
+    /**
+     * @notice Generates the name for a token based on its ID
+     * @dev Creates a deterministic but non-sequential name using the format "$ABC-DEF"
+     * @param tokenId The ID of the token
+     * @return The formatted name string using non-vowel characters
+     */
+    function generateName(uint256 tokenId) 
+        internal 
+        pure 
+        returns (string memory) 
+    {
+        if (LegendaryValues.isLegendary(tokenId)) {
+            return LegendaryValues.getLegendaryValues(tokenId).name;
+        }
+
+        bytes memory letters = "BCDFGHJKLMNPQRSTVWXYZ"; // All non-vowel characters
+        uint256 hash = uint256(keccak256(abi.encodePacked(tokenId)));
+        
+        // Determine the number of characters on each side (2 to 4)
+        uint8 leftLength = uint8((hash % 3) + 2); // 2 to 4
+        uint8 rightLength = uint8(((hash / 3) % 3) + 2); // 2 to 4
+
+        bytes memory result = new bytes(1 + leftLength + 1 + rightLength); // 1 dollar sign + left chars + hyphen + right chars
+        
+        // Add dollar sign
+        result[0] = "$";
+        
+        // Generate left side characters
+        for (uint8 i = 0; i < leftLength; i++) {
+            result[1 + i] = letters[(hash / (21**i)) % 21];
+        }
+        
+        // Add hyphen
+        result[1 + leftLength] = "-";
+        
+        // Generate right side characters
+        for (uint8 i = 0; i < rightLength; i++) {
+            result[2 + leftLength + i] = letters[(hash / (21**(i + leftLength))) % 21];
+        }
+        
+        return string(result);
+    }
+
+    /*************************************/
     /*         Helper Functions          */
     /*************************************/
 
-    // Helper function to handle trait formatting
+    /**
+     * @notice Formats a trait for the token metadata
+     * @dev Used for formatting traits in the attributes section
+     * @param traitType The type of trait
+     * @param value The value of the trait
+     * @return Formatted string containing the trait
+     */
     function _formatTrait(
         string memory traitType,
         string memory value
-    ) internal pure returns (string memory) {
+    ) public pure returns (string memory) {
         return string(
             abi.encodePacked(
                 ',{"trait_type":"',
@@ -325,10 +325,6 @@ library MetadataUtils {
                 '"}'
                 )
         );
-    }
-
-    function _isLegendary(uint256 tokenId) internal pure returns (bool) {
-        return tokenId <= Constants.LEGENDARY_CHARTS_COUNT;
     }
 }
 

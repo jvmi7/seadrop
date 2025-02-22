@@ -7,6 +7,6 @@ interface IValueGenerator {
     function updateElevatedTokenSeed() external;
     function getGenesisTokenSeeds() external view returns (bytes32[7] memory);
     function getElevatedTokenSeed() external view returns (bytes32);
-    function testFastForwardReveal() external;
-    function setTokenValuesSeed(uint256 tokenId, bytes32 seed) external;
+    function fastForwardReveal() external;
+    function updateStateOnElevate(uint256 tokenId, bytes32 seed) external;
 }
