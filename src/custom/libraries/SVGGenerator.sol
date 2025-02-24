@@ -31,28 +31,36 @@ library SVGGenerator {
     /// @return Array of color indices corresponding to palette.barColors
     function getColorIndices(uint8[7] memory values, uint8 paletteIndex) internal pure returns (uint8[7] memory) {
         uint8[7] memory colorIndices;
-        
-        // For CHROMATIC & PASTEL: use sequential colors with offset
-        if (paletteIndex == Constants.CHROMATIC || paletteIndex == Constants.PASTEL) {
-            uint8 offset = calculateOffset(values);
-            for (uint256 i = 0; i < 7; i++) {
-                colorIndices[i] = uint8((i + offset) % 7);
-            }
+
+        if (paletteIndex == Constants.RGB || paletteIndex == Constants.CMY) {
+            applySequentialColors(values, colorIndices, 3);
+        } else if (paletteIndex == Constants.CHROMATIC || paletteIndex == Constants.PASTEL) {
+            applySequentialColors(values, colorIndices, 7);
         } else {
-            // For other palettes: determine color based on value ranges
-            for (uint256 i = 0; i < 7; i++) {
-                uint8 value = values[i];
-                if (value <= 14) colorIndices[i] = 0;
-                else if (value <= 28) colorIndices[i] = 1;
-                else if (value <= 42) colorIndices[i] = 2;
-                else if (value <= 56) colorIndices[i] = 3;
-                else if (value <= 70) colorIndices[i] = 4;
-                else if (value <= 84) colorIndices[i] = 5;
-                else colorIndices[i] = 6;
-            }
+            applyRangeBasedColors(values, colorIndices);
         }
-        
+
         return colorIndices;
+    }
+
+    function applySequentialColors(uint8[7] memory values, uint8[7] memory colorIndices, uint8 modulo) private pure {
+        uint8 offset = calculateOffset(values);
+        for (uint256 i = 0; i < 7; i++) {
+            colorIndices[i] = uint8((i + offset) % modulo);
+        }
+    }
+
+    function applyRangeBasedColors(uint8[7] memory values, uint8[7] memory colorIndices) private pure {
+        for (uint256 i = 0; i < 7; i++) {
+            uint8 value = values[i];
+            if (value <= 14) colorIndices[i] = 0;
+            else if (value <= 28) colorIndices[i] = 1;
+            else if (value <= 42) colorIndices[i] = 2;
+            else if (value <= 56) colorIndices[i] = 3;
+            else if (value <= 70) colorIndices[i] = 4;
+            else if (value <= 84) colorIndices[i] = 5;
+            else colorIndices[i] = 6;
+        }
     }
 
     /// @notice Generates an SVG visualization based on provided values and color palette

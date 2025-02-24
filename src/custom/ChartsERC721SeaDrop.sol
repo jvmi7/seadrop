@@ -6,7 +6,7 @@ import { IMetadataRenderer } from "./interfaces/IMetadataRenderer.sol";
 import { IChartsErrors } from "./interfaces/IChartsErrors.sol";
 import { Palettes } from "./libraries/Palettes.sol";
 import { Constants } from "./libraries/Constants.sol";
-
+import { MetadataUtils } from "./libraries/MetadataUtils.sol";
 /**
  * @title ChartsERC721SeaDrop
  * @dev A custom ERC721SeaDrop contract for the charts project that enables elevation
@@ -110,7 +110,7 @@ contract ChartsERC721SeaDrop is ERC721SeaDrop, IChartsErrors {
         // Initialize metadata for each minted token
         for (uint256 i = 0; i < quantity; i++) {
             uint256 tokenId = _totalMinted() - quantity + i + 1;
-            metadataRenderer.setInitialMetadata(tokenId);
+            metadataRenderer.initializeTokenMetadata(tokenId);
         }
     }
 
@@ -125,46 +125,35 @@ contract ChartsERC721SeaDrop is ERC721SeaDrop, IChartsErrors {
     {
         // Check if the tokens are valid for elevation
         _validateElevation(elevateTokenId, burnTokenId);
+        
+        // Save the previous metadata values
+        uint8 prevPalette = metadataRenderer.getTokenPalette(elevateTokenId);
+        uint8 prevTier = MetadataUtils.calculateTierFromPalette(prevPalette);
+        bytes32 prevSeed = metadataRenderer.getTokenSeed(elevateTokenId);
 
-        // Get the new palette for the elevated token
-        uint8 newPalette = _getElevatedPalette(elevateTokenId, burnTokenId);
+        // Elevate the token
+        metadataRenderer.elevate(elevateTokenId, burnTokenId);
+        
+        // Get the new metadata values
+        uint8 newPalette = metadataRenderer.getTokenPalette(elevateTokenId);
+        uint8 newTier = MetadataUtils.calculateTierFromPalette(newPalette);
+        bytes32 newSeed = metadataRenderer.getTokenSeed(elevateTokenId);
 
-        // Create a hash from the two tokenIds
-        bytes32 seed = keccak256(abi.encodePacked(elevateTokenId, burnTokenId));
+        // Verify the elevation
+        if (newTier != prevTier + 1) revert ElevationError(elevateTokenId, burnTokenId);
+        if (newPalette == prevPalette) revert ElevationError(elevateTokenId, burnTokenId);
+        if (newSeed == prevSeed) revert ElevationError(elevateTokenId, burnTokenId);
 
-        // Effects
-        // Generate the metadata for the new token & set it to the elevate token
-        metadataRenderer.setElevatedToken(elevateTokenId, newPalette, seed);
-
-        // Burn the 1st token
+        // Burn the designated token
         _burn(burnTokenId);
 
-        if (!metadataRenderer.getIsElevatedToken(elevateTokenId)) {
-            revert TokenError(elevateTokenId);
-        }
-
+        // Emit the event
         emit TokensElevated(elevateTokenId, burnTokenId);
-    }
-
-    function _getElevatedPalette(uint256 elevateTokenId, uint256 burnTokenId) private view returns (uint8) {
-        uint8 elevatePalette = metadataRenderer.getTokenPalette(elevateTokenId);
-        uint8 burnPalette = metadataRenderer.getTokenPalette(burnTokenId);
-
-        if (elevatePalette < Constants.CHROMATIC && burnPalette < Constants.CHROMATIC) {
-            return Constants.CHROMATIC;
-        }
-        if (elevatePalette == Constants.CHROMATIC && burnPalette == Constants.CHROMATIC) {
-            return Constants.PASTEL;
-        }
-        if (elevatePalette == Constants.PASTEL && burnPalette == Constants.PASTEL) {
-            return Constants.GREYSCALE;
-        }
-        revert ElevateError(elevateTokenId, burnTokenId);
     }
 
     function _validateElevation(uint256 elevateTokenId, uint256 burnTokenId) private view {
         // Prevent duplicate token IDs
-        if (burnTokenId == elevateTokenId) revert ElevateError(elevateTokenId, burnTokenId);
+        if (burnTokenId == elevateTokenId) revert ElevationError(elevateTokenId, burnTokenId);
         
         // Check existence and ownership of both tokens
         if (!_exists(elevateTokenId) || ownerOf(elevateTokenId) != msg.sender) {
@@ -182,28 +171,6 @@ contract ChartsERC721SeaDrop is ERC721SeaDrop, IChartsErrors {
         
         if (getApproved(burnTokenId) != address(0)) {
             revert TokenApprovedForTransfer(burnTokenId);
-        }
-
-        // Validate palette levels are the same for both tokens
-        uint8 elevatePalette = metadataRenderer.getTokenPalette(elevateTokenId);
-        uint8 burnPalette = metadataRenderer.getTokenPalette(burnTokenId);
-
-        // Cannot burn a greyscale token
-        if (elevatePalette == Constants.GREYSCALE || burnPalette == Constants.GREYSCALE) {
-            revert ElevateError(elevateTokenId, burnTokenId);
-        }
-
-        // Both tokens must be either special or non-special palettes
-        if (Palettes.isSpecialPalette(elevatePalette) != Palettes.isSpecialPalette(burnPalette)) {
-            revert ElevateError(elevateTokenId, burnTokenId);
-        }
-
-        // For non-special palettes, both must be non-special
-        // For special palettes (CHROMATIC/PASTEL), both must be at the same level
-        if (Palettes.isSpecialPalette(elevatePalette)) {
-            if (elevatePalette != burnPalette) {
-                revert ElevateError(elevateTokenId, burnTokenId);
-            }
         }
     }
 }

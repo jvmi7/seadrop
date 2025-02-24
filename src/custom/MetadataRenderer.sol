@@ -10,6 +10,8 @@ import { MetadataImplementation } from "./MetadataImplementation.sol";
 import { IMetadataRenderer } from "./interfaces/IMetadataRenderer.sol";
 import { Ownable } from "openzeppelin-contracts/access/Ownable.sol";
 import { LegendaryValues } from "./libraries/LegendaryValues.sol";
+import { MetadataUtils } from "./libraries/MetadataUtils.sol";
+import { Utils } from "./libraries/Utils.sol";
 /**
  * @title MetadataRenderer
  * @notice Handles the generation and management of NFT metadata, including values and palettes
@@ -36,15 +38,20 @@ contract MetadataRenderer is IMetadataRenderer, Ownable {
     MetadataImplementation public metadataImplementation;
     /// @notice URL for the animation
     string public animationUrl;
-    
+    /// @notice rolling seed for the value generator
+    bytes32 public globalSeed;
+
     /// @notice Maps token IDs to their color palettes
     mapping(uint256 => uint8) private _tokenPalettes;
+    /// @notice Maps token IDs to their seeds
+    mapping(uint256 => bytes32) private _tokenSeeds;
 
     /*************************************/
     /*              Errors               */
     /*************************************/
     error OnlyNFTContract();
     error InvalidElevatedPalette();
+    error InvalidElevation();
 
     /*************************************/
     /*              Constructor          */
@@ -64,6 +71,7 @@ contract MetadataRenderer is IMetadataRenderer, Ownable {
         valueGenerator = IValueGenerator(_valueGenerator);
         metadataImplementation = MetadataImplementation(_metadataImplementation);
         animationUrl = Constants.ANIMATION_URL;
+        globalSeed = Utils.getNewRandomSeed();
     }
 
     /*************************************/
@@ -91,21 +99,12 @@ contract MetadataRenderer is IMetadataRenderer, Ownable {
     }
 
     /**
-     * @notice Checks if a token is marked as elevated
-     * @param tokenId The ID of the token to check
-     * @return Boolean indicating if the token is elevated
+     * @notice Gets the seed of a token
+     * @param tokenId The ID of the token to get the seed for
+     * @return The seed of the token
      */
-    function getIsElevatedToken(uint256 tokenId) external view returns (bool) {
-        uint8 palette = _tokenPalettes[tokenId];
-        return palette == Constants.CHROMATIC || palette == Constants.PASTEL || palette == Constants.GREYSCALE;
-    }
-
-    /**
-     * @notice Gets the animation URL
-     * @return The animation URL
-     */
-    function getAnimationUrl() external view returns (string memory) {
-        return animationUrl;
+    function getTokenSeed(uint256 tokenId) external view returns (bytes32) {
+        return _tokenSeeds[tokenId];
     }
 
     /*************************************/
@@ -115,20 +114,13 @@ contract MetadataRenderer is IMetadataRenderer, Ownable {
      * @notice Sets the initial metadata for a newly minted token
      * @param tokenId The ID of the token to set metadata for
      */
-    function setInitialMetadata(uint256 tokenId) external onlyNFTContract {
-        _tokenPalettes[tokenId] = _calculateInitialPalette(tokenId);
-    }
-
-    /**
-     * @notice Sets a token as an elevated token with a specific palette
-     * @param tokenId The ID of the token to set as elevated
-     * @param palette The palette of the elevated token
-     * @dev Only callable by NFT contract and requires elevated palette range
-     */
-    function setElevatedToken(uint256 tokenId, uint8 palette, bytes32 seed) external onlyNFTContract {
-        if (palette < Constants.CHROMATIC || palette > Constants.GREYSCALE) revert InvalidElevatedPalette();
-        _tokenPalettes[tokenId] = palette;
-        valueGenerator.updateStateOnElevate(tokenId, seed);
+    function initializeTokenMetadata(uint256 tokenId) external onlyNFTContract {
+        if (LegendaryValues.isLegendary(tokenId)) {
+            _tokenPalettes[tokenId] = Constants.LEGENDARY;
+        } else {
+            uint8 palette = MetadataUtils.calculateGenesisPalette(tokenId);
+            _tokenPalettes[tokenId] = palette;
+        }
     }
 
     /**
@@ -170,6 +162,41 @@ contract MetadataRenderer is IMetadataRenderer, Ownable {
         return metadataImplementation.generateTokenURI(metadata);
     }
 
+    /**
+     * @notice Elevates a token by burning another token and setting the palette to the next tier
+     * @param elevateTokenId The ID of the token to elevate
+     * @param burnTokenId The ID of the token to burn
+     * @dev Only callable by NFT contract and requires elevated palette range
+     */
+    function elevate(uint256 elevateTokenId, uint256 burnTokenId) external onlyNFTContract {
+        // Validate the tokens are able to be elevated
+        uint8 elevatePalette = _tokenPalettes[elevateTokenId];
+        uint8 burnPalette = _tokenPalettes[burnTokenId];
+        uint8 elevateTier = MetadataUtils.calculateTierFromPalette(elevatePalette);
+        uint8 burnTier = MetadataUtils.calculateTierFromPalette(burnPalette);
+
+        // Must be the same tier
+        if (elevateTier != burnTier) revert InvalidElevation();
+        // Cannot elevate greyscale
+        if (elevatePalette == Constants.GREYSCALE || burnPalette == Constants.GREYSCALE) revert InvalidElevatedPalette();
+        // Cannot elevate legendary
+        if (elevatePalette == Constants.LEGENDARY || burnPalette == Constants.LEGENDARY) revert InvalidElevatedPalette();
+
+        // Generate new palette
+        uint8 newTier = elevateTier + 1;
+        uint8 newPalette = MetadataUtils.calculateElevatedPalette(newTier, globalSeed);
+
+        // Set token palette
+        _tokenPalettes[elevateTokenId] = newPalette;
+        // Set token seed
+        _tokenSeeds[elevateTokenId] = globalSeed;
+        // Update global seed
+        globalSeed = Utils.getNewRandomSeed();
+
+        // Emit the event
+        emit TokenElevated(elevateTokenId, newPalette, newTier, _tokenSeeds[elevateTokenId]);
+    }
+
     /*************************************/
     /*              Private              */
     /*************************************/
@@ -184,10 +211,13 @@ contract MetadataRenderer is IMetadataRenderer, Ownable {
         returns (TokenMetadata memory) 
     {
         uint8[VALUES_ARRAY_SIZE] memory values = _getValues(tokenId);
+        uint8 palette = _tokenPalettes[tokenId];
+        uint8 tier = MetadataUtils.calculateTierFromPalette(palette);
         return TokenMetadata({
             id: tokenId,
             values: values,
-            palette: _tokenPalettes[tokenId],
+            palette: palette,
+            tier: tier,
             animationUrl: animationUrl
         });
     }
@@ -205,19 +235,6 @@ contract MetadataRenderer is IMetadataRenderer, Ownable {
         if (LegendaryValues.isLegendary(tokenId)) {
             return LegendaryValues.getLegendaryValues(tokenId).values;
         }
-        return valueGenerator.generateValuesFromSeeds(tokenId);
-    }
-
-    /**
-     * @notice Calculates the initial palette for a token based on its ID
-     * @param tokenId The ID of the token to calculate palette for
-     * @return Palette index (0-4)
-     */
-    function _calculateInitialPalette(uint256 tokenId) private pure returns (uint8) {
-        if (LegendaryValues.isLegendary(tokenId)) {
-            return Constants.LEGENDARY;
-        }
-        uint8 mod = uint8(tokenId % 5);
-        return mod;
+        return valueGenerator.generateValuesFromSeeds(tokenId, _tokenSeeds[tokenId]);
     }
 }

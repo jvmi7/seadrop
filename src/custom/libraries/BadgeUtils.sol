@@ -95,8 +95,8 @@ library BadgeUtils {
         // Check if all values are non-zero
         if (!ArrayUtils.areAllValuesNonZero(values)) return false;
 
-        // Verify the color indices are symmetrical if the palette is not special
-        if (!Palettes.isSpecialPalette(palette)) {
+        // Verify the color indices are symmetrical if the colors are determined by values
+        if (Palettes.isGenesisPalette(palette) || palette == Constants.GREYSCALE) {
           uint8[7] memory colorIndices = SVGGenerator.getColorIndices(values, palette);
           if (colorIndices[0] != colorIndices[6]) return false;
           if (colorIndices[1] != colorIndices[5]) return false;

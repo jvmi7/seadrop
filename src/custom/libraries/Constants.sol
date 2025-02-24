@@ -22,10 +22,19 @@ library Constants {
     uint8 constant GREENS = 2;
     uint8 constant BLUES = 3;
     uint8 constant VIOLETS = 4;
-    uint8 constant CHROMATIC = 5;
-    uint8 constant PASTEL = 6;
-    uint8 constant GREYSCALE = 7;
-    uint8 constant LEGENDARY = 8;
+    uint8 constant RGB = 5;
+    uint8 constant CMY = 6;
+    uint8 constant CHROMATIC = 7;
+    uint8 constant PASTEL = 8;
+    uint8 constant GREYSCALE = 9;
+    uint8 constant LEGENDARY = 10;
+
+    /// @notice Tier indices for different color schemes
+    uint8 constant GENESIS_TIER = 0;
+    uint8 constant RARE_TIER = 1;
+    uint8 constant SUPER_RARE_TIER = 2;
+    uint8 constant ULTRA_RARE_TIER = 3;
+    uint8 constant LEGENDARY_TIER = 4;
 
     // NFT metadata constants
     /// @notice Default description for new NFTs

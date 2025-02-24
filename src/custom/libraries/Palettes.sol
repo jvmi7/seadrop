@@ -102,6 +102,22 @@ library Palettes {
                 barColors: ['#6100ff', '#770fff', '#8b1fff', '#9d2eff', '#ae3dff', '#bd4dff', '#cb5cff']
             });
         }
+        if (paletteIndex == Constants.RGB) {
+            return ColorPalette({
+                name: "rgb",
+                background: BACKGROUND,
+                surface: SURFACE,
+                barColors: ["#FF0000", "#00FF00", "#0000FF", "", "", "", ""]
+            });
+        }
+        if (paletteIndex == Constants.CMY) {
+            return ColorPalette({
+                name: "cmy",
+                background: BACKGROUND,
+                surface: SURFACE,
+                barColors: ["#00FFFF", "#FF00FF", "#FFFF00", "", "", "", ""]
+            });
+        }
         if (paletteIndex == Constants.CHROMATIC) {
             return ColorPalette({
                 name: "chromatic",
@@ -135,22 +151,7 @@ library Palettes {
         revert InvalidPalette(paletteIndex, "Invalid palette index");
     }
 
-    /// @notice Returns the conversion rules for a target palette
-    function getPaletteConversion(uint8 targetPalette) internal pure returns (PaletteConversion memory) {
-        if (targetPalette == Constants.CHROMATIC) {
-            return PaletteConversion(ALL_BASE_PALETTES, Constants.CHROMATIC, 4);
-        }
-        if (targetPalette == Constants.PASTEL) {
-            return PaletteConversion(Constants.CHROMATIC, Constants.PASTEL, 3);
-        }
-        if (targetPalette == Constants.GREYSCALE) {
-            return PaletteConversion(Constants.PASTEL, Constants.GREYSCALE, 2);
-        }
-
-        revert InvalidPalette(targetPalette, "Cannot convert to this palette");
-    }
-
-    function isSpecialPalette(uint8 paletteIndex) internal pure returns (bool) {
-        return paletteIndex != Constants.REDS && paletteIndex != Constants.YELLOWS && paletteIndex != Constants.GREENS && paletteIndex != Constants.BLUES && paletteIndex != Constants.VIOLETS;
+    function isGenesisPalette(uint8 paletteIndex) internal pure returns (bool) {
+        return paletteIndex == Constants.REDS || paletteIndex == Constants.YELLOWS || paletteIndex == Constants.GREENS || paletteIndex == Constants.BLUES || paletteIndex == Constants.VIOLETS;
     }
 }

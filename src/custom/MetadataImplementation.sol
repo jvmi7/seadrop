@@ -89,6 +89,8 @@ contract MetadataImplementation {
             )
         );
 
+        // TODO: add tier to the basic properties
+
         return string(
             abi.encodePacked(
                 '"name":"', generateName(metadata.id), '",',

@@ -33,19 +33,11 @@ contract ValueGenerator is IValueGenerator, Ownable {
 
     /// @notice Array of genesis token seeds used for value generation
     /// @dev Seeds are used to generate values for tokens that were created by minting
-    bytes32[SEED_ARRAY_SIZE] private _genesisTokenSeeds;
-
-    /// @notice Random seed used for value generation for tokens created by elevation
-    /// @dev Used to generate values for tokens that were created by elevation
-    bytes32 private _elevatedTokenSeed;
+    bytes32[SEED_ARRAY_SIZE] public genesisTokenSeeds;
 
     /// @notice Timestamp of the last seed update
     /// @dev Used to enforce minimum time between updates
     uint256 private _lastUpdateBlock;
-
-    /// @notice Maps token IDs to their values seed
-    /// @dev seed used to generate values for special tokens
-    mapping(uint256 => bytes32) private _tokenValuesSeed;
     
     /*************************************/
     /*              Events               */
@@ -54,11 +46,6 @@ contract ValueGenerator is IValueGenerator, Ownable {
     /// @param updater Address that triggered the update
     /// @param timestamp Time of the update
     event GenesisTokenSeedsUpdated(address indexed updater, uint256 timestamp);
-
-    /// @notice Emitted when the elevated token seed is updated
-    /// @param updater Address that triggered the update
-    /// @param timestamp Time of the update
-    event ElevatedTokenSeedUpdated(address indexed updater, uint256 timestamp);
 
     /*************************************/
     /*              Errors               */
@@ -86,11 +73,9 @@ contract ValueGenerator is IValueGenerator, Ownable {
     /**
      * @notice Initializes the contract with the current block timestamp
      * @dev Sets initial _lastUpdateBlock to prevent immediate updates
-     * @dev Sets initial _elevatedTokenSeed to initialize the seed for elevation
      */
     constructor() {
         _lastUpdateBlock = block.timestamp;
-        _elevatedTokenSeed = keccak256(abi.encodePacked(block.timestamp));
     }
 
     /*************************************/
@@ -119,36 +104,6 @@ contract ValueGenerator is IValueGenerator, Ownable {
     }
 
     /*************************************/
-    /*              Getters              */
-    /*************************************/
-    /**
-     * @notice Retrieves the current genesis token seeds array
-     * @dev External view function for reading the entire seeds array
-     * @return The current genesis token seeds array
-     */
-    function getGenesisTokenSeeds() external view returns (bytes32[SEED_ARRAY_SIZE] memory) {
-        return _genesisTokenSeeds;
-    }
-
-    /**
-     * @notice Retrieves the seed used to generate values for a specific token
-     * @dev Only callable by metadata renderer contract
-     * @param tokenId The ID of the token to retrieve the seed for
-     * @return The seed used to generate values for the token
-     */
-    function getTokenValuesSeed(uint256 tokenId) external view returns (bytes32) {
-        return _tokenValuesSeed[tokenId];
-    }
-
-    /**
-     * @notice Retrieves the elevated token seed
-     * @return The elevated token seed
-     */
-    function getElevatedTokenSeed() external view returns (bytes32) {
-        return _elevatedTokenSeed;
-    }
-
-    /*************************************/
     /*              Setters              */
     /*************************************/
     /**
@@ -171,19 +126,6 @@ contract ValueGenerator is IValueGenerator, Ownable {
         _metadataRendererAddress = renderer;
     }
 
-    /**
-     * @notice Sets a token's value seed and updates the elevated token seed
-     * @dev Only callable by metadata renderer contract
-     * @param tokenId The ID of the token to set the seed for
-     * @param seed The new seed to combine with current elevated token seed
-     */
-    function updateStateOnElevate(uint256 tokenId, bytes32 seed) external onlyMetadataRenderer {
-        // Update the token's value seed with the current elevated token seed
-        _tokenValuesSeed[tokenId] = _elevatedTokenSeed;
-        // Generate a new elevated token seed and update
-        _elevatedTokenSeed = keccak256(abi.encodePacked(seed, _elevatedTokenSeed));
-    }
-
     /*************************************/
     /*              External             */
     /*************************************/
@@ -201,25 +143,12 @@ contract ValueGenerator is IValueGenerator, Ownable {
     }
 
     /**
-     * @notice Updates the elevated token seed
-     * @dev Only callable by upkeep address or owner
-     *      Generates new seed and updates last update block
-     */
-    function updateElevatedTokenSeed() external onlyUpkeepOrOwner {
-        bytes32 newSeed = Utils.getNewRandomSeed();
-        _elevatedTokenSeed = newSeed;
-        _lastUpdateBlock = block.timestamp;
-        
-        emit ElevatedTokenSeedUpdated(msg.sender, block.timestamp);
-    }
-
-    /**
      * @notice Generates values for a specific token
      * @dev Values depend on token's mint iteration and current seeds
      * @param tokenId The token ID to generate values for
      * @return Array of SEED_ARRAY_SIZE values between 1 and MAX_RANDOM_VALUE
      */
-    function generateValuesFromSeeds(uint256 tokenId)
+    function generateValuesFromSeeds(uint256 tokenId, bytes32 tokenSeed)
         external 
         view 
         returns (uint8[SEED_ARRAY_SIZE] memory) 
@@ -227,8 +156,8 @@ contract ValueGenerator is IValueGenerator, Ownable {
         uint8[SEED_ARRAY_SIZE] memory values;
         
         for (uint256 i = 0; i < SEED_ARRAY_SIZE; i++) {
-            if (_genesisTokenSeeds[i] != 0) {
-                values[i] = _generateSingleValue(_genesisTokenSeeds[i], _tokenValuesSeed[tokenId], tokenId);
+            if (genesisTokenSeeds[i] != 0) {
+                values[i] = _generateSingleValue(genesisTokenSeeds[i], tokenSeed, tokenId);
             }
         }
         return values;
@@ -242,13 +171,13 @@ contract ValueGenerator is IValueGenerator, Ownable {
      * @param newSeed The new seed to add to the array
      */
     function _updateGenesisTokenSeeds(bytes32 newSeed) private {
-        uint256 emptySlot = ArrayUtils.findEmptySlot(_genesisTokenSeeds);
+        uint256 emptySlot = ArrayUtils.findEmptySlot(genesisTokenSeeds);
 
         if (emptySlot == SEED_ARRAY_SIZE) {
             revert GenesisTokenSeedsArrayFull();
         }
 
-        _genesisTokenSeeds[emptySlot] = newSeed;
+        genesisTokenSeeds[emptySlot] = newSeed;
     }
 
     /**
@@ -258,12 +187,12 @@ contract ValueGenerator is IValueGenerator, Ownable {
      * @param tokenId The token ID to generate value for
      * @return Value between 1 and MAX_RANDOM_VALUE
      */
-    function _generateSingleValue(bytes32 genesisSeed, bytes32 tokenValuesSeed, uint256 tokenId) 
+    function _generateSingleValue(bytes32 genesisSeed, bytes32 tokenSeed, uint256 tokenId) 
         private 
         pure 
         returns (uint8) 
     {
-        bytes32 combinedSeed = keccak256(abi.encodePacked(genesisSeed, tokenId, tokenValuesSeed));
+        bytes32 combinedSeed = keccak256(abi.encodePacked(genesisSeed, tokenId, tokenSeed));
         return uint8((uint256(combinedSeed) % Constants.MAX_RANDOM_VALUE) + 1);
     }
 
