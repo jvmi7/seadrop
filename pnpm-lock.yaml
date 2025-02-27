@@ -105,10 +105,10 @@ importers:
         specifier: ^0.2.32
         version: 0.2.32
       prettier:
-        specifier: ^2.7.1
+        specifier: ^2.8.8
         version: 2.8.8
       prettier-plugin-solidity:
-        specifier: ^1.0.0-beta.24
+        specifier: ^1.4.1
         version: 1.4.1(prettier@2.8.8)
       solhint:
         specifier: ^3.3.7

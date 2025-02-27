@@ -18,17 +18,18 @@ interface IMetadataRenderer {
     /**********************************/
     /*            Functions           */
     /**********************************/
+
+    /// @notice Gets the palette of a token
+    function tokenPalettes(uint256 tokenId) external view returns (uint8);
+
+    /// @notice Gets the seed of a token
+    function tokenSeeds(uint256 tokenId) external view returns (bytes32);
+
     /// @notice Gets the NFT contract address
     function nftContract() external view returns (address);
 
     /// @notice Gets the value generator contract
     function valueGenerator() external view returns (IValueGenerator);
-
-    /// @notice Gets the palette of a token
-    function getTokenPalette(uint256 tokenId) external view returns (uint8);
-
-    /// @notice Gets the seed of a token
-    function getTokenSeed(uint256 tokenId) external view returns (bytes32);
 
     /// @notice Sets the initial metadata for a newly minted token
     function initializeTokenMetadata(uint256 tokenId) external;
@@ -46,5 +47,5 @@ interface IMetadataRenderer {
     function setAnimationUrl(string memory _animationUrl) external;
 
     /// @notice Generates the complete token URI for a given token
-    function generateTokenURI(uint256 tokenId) external view returns (string memory);
+    function getTokenURI(uint256 tokenId) external view returns (string memory);
 }

@@ -5,283 +5,150 @@ import "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
 import "../ValueGenerator.sol";
 
-// contract ValueGeneratorTest is Test {
-//     ValueGenerator private generator;
-//     address private owner;
-//     address private upkeep;
-//     address private renderer;
+contract ValueGeneratorTest is Test {
+    ValueGenerator private generator;
+    address private owner;
+    address private upkeep;
+    address private renderer;
 
-//     event SeedUpdated(address indexed updater, uint256 timestamp);
-//     event GenesisTokenSeedsUpdated(address indexed updater, uint256 timestamp);
-//     event ElevatedTokenSeedUpdated(address indexed updater, uint256 timestamp);
+    event SeedUpdated(address indexed updater, uint256 timestamp);
+    event GenesisTokenSeedsUpdated(address indexed updater, bytes32 indexed seed, uint256 timestamp);
 
-//     function setUp() public {
-//         owner = address(this);
-//         upkeep = makeAddr("upkeep");
-//         renderer = makeAddr("renderer");
-        
-//         generator = new ValueGenerator();
-//         generator.setUpkeepAddress(upkeep);
-//         generator.setMetadataRenderer(renderer);
-//     }
+    function setUp() public {
+        owner = address(this);
+        upkeep = makeAddr("upkeep");
 
-//     // 1. Basic Initialization and Configuration Tests
-//     function test_InitialState() public {
-//         assertEq(generator.s_upkeepAddress(), upkeep);
-//         assertEq(generator._metadataRendererAddress(), renderer);
-//     }
+        generator = new ValueGenerator();
+        generator.setUpkeepAddress(upkeep);
+    }
 
-//     // 2. Access Control and Administration Tests
-//     function test_OwnershipTransfer() public {
-//         address newOwner = makeAddr("newOwner");
-        
-//         // Transfer ownership
-//         generator.transferOwnership(newOwner);
-//         assertEq(generator.owner(), newOwner);
-        
-//         // Old owner should no longer be able to call restricted functions
-//         vm.expectRevert("Ownable: caller is not the owner");
-//         generator.setUpkeepAddress(address(1));
-        
-//         // New owner should be able to call restricted functions
-//         vm.prank(newOwner);
-//         generator.setUpkeepAddress(address(1));
-//         assertEq(generator.s_upkeepAddress(), address(1));
-//     }
+    // 1. Basic Initialization and Configuration Tests
+    function test_InitialState() public {
+        assertEq(generator.s_upkeepAddress(), upkeep);
+    }
 
-//     function test_SetUpkeepAddress() public {
-//         address newUpkeep = makeAddr("newUpkeep");
-        
-//         // Should revert if zero address
-//         vm.expectRevert(ValueGenerator.InvalidUpkeepAddress.selector);
-//         generator.setUpkeepAddress(address(0));
+    function test_ConstructorInitialization() public {
+        // Deploy a new instance of the contract
+        ValueGenerator newGenerator = new ValueGenerator();
 
-//         // Should succeed with valid address
-//         generator.setUpkeepAddress(newUpkeep);
-//         assertEq(generator.s_upkeepAddress(), newUpkeep);
-//     }
+        // Check that lastUpdateBlock is set to the current block timestamp
+        assertEq(newGenerator.lastUpdateBlock(), block.timestamp);
+    }
 
-//     function test_SetMetadataRenderer() public {
-//         address newRenderer = makeAddr("newRenderer");
-        
-//         // Should revert if zero address
-//         vm.expectRevert(ValueGenerator.InvalidMetadataRenderer.selector);
-//         generator.setMetadataRenderer(address(0));
+    // 2. Access Control and Administration Tests
+    function test_AccessControl() public {
+        address newOwner = makeAddr("newOwner");
+        address unauthorized = makeAddr("unauthorized");
+        address newUpkeep = makeAddr("newUpkeep");
 
-//         // Should succeed with valid address
-//         generator.setMetadataRenderer(newRenderer);
-//         assertEq(generator._metadataRendererAddress(), newRenderer);
-//     }
+        // Transfer ownership
+        generator.transferOwnership(newOwner);
+        assertEq(generator.owner(), newOwner);
 
-//     function test_ZeroAddressChecks() public {
-//         vm.expectRevert(ValueGenerator.InvalidUpkeepAddress.selector);
-//         generator.setUpkeepAddress(address(0));
-        
-//         vm.expectRevert(ValueGenerator.InvalidMetadataRenderer.selector);
-//         generator.setMetadataRenderer(address(0));
-//     }
+        // Old owner should no longer be able to call restricted functions
+        vm.expectRevert("Ownable: caller is not the owner");
+        generator.setUpkeepAddress(newUpkeep);
 
-//     // 3. Genesis Token Seeds Tests
-//     function test_updateGenesisTokenSeeds() public {
-//         // Test update from owner
-//         vm.expectEmit(true, false, false, true);
-//         emit GenesisTokenSeedsUpdated(address(this), block.timestamp);
-//         generator.updateGenesisTokenSeeds();
-        
-//         // Test update from upkeep
-//         vm.prank(upkeep);
-//         generator.updateGenesisTokenSeeds();
-//     }
+        // New owner should be able to call restricted functions
+        vm.prank(newOwner);
+        generator.setUpkeepAddress(newUpkeep);
+        assertEq(generator.s_upkeepAddress(), newUpkeep);
 
-//     function test_updateGenesisTokenSeedsRevert() public {
-//         // Should revert if called by unauthorized address
-//         vm.prank(makeAddr("unauthorized"));
-//         vm.expectRevert(ValueGenerator.UnauthorizedCaller.selector);
-//         generator.updateGenesisTokenSeeds();
-//     }
+        // Ensure updateGenesisTokenSeeds can only be called by upkeep or owner
+        vm.prank(newOwner);
+        generator.updateGenesisTokenSeeds();
 
-//     function test_getGenesisTokenSeeds() public {
-//         bytes32[7] memory seeds = generator.getGenesisTokenSeeds();
-//         assertEq(seeds.length, 7);
-//     }
+        vm.prank(newUpkeep);
+        generator.updateGenesisTokenSeeds();
 
-//     function test_GenesisTokenSeedsArrayFull() public {
-//         // Fill up the array
-//         for (uint256 i = 0; i < 7; i++) {
-//             generator.updateGenesisTokenSeeds();
-//         }
-        
-//         // Should revert when trying to add more seeds
-//         vm.expectRevert(ValueGenerator.GenesisTokenSeedsArrayFull.selector);
-//         generator.updateGenesisTokenSeeds();
-//     }
+        // Should revert if called by unauthorized address
+        vm.prank(unauthorized);
+        vm.expectRevert(ValueGenerator.UnauthorizedCaller.selector);
+        generator.updateGenesisTokenSeeds();
 
-//     // 4. Elevated Token Seed Tests
-//     function test_updateElevatedTokenSeed() public {
-//         // Test update from owner
-//         vm.expectEmit(true, false, false, true);
-//         emit ElevatedTokenSeedUpdated(address(this), block.timestamp);
-//         generator.updateElevatedTokenSeed();
-        
-//         // Test update from upkeep
-//         vm.prank(upkeep);
-//         generator.updateElevatedTokenSeed();
-//     }
+        // Test setting upkeep address by unauthorized address
+        vm.prank(unauthorized);
+        vm.expectRevert("Ownable: caller is not the owner");
+        generator.setUpkeepAddress(newUpkeep);
 
-//     function test_updateElevatedTokenSeedRevert() public {
-//         // Should revert if called by unauthorized address
-//         vm.prank(makeAddr("unauthorized"));
-//         vm.expectRevert(ValueGenerator.UnauthorizedCaller.selector);
-//         generator.updateElevatedTokenSeed();
-//     }
+        // Test setting upkeep address by new owner
+        vm.prank(newOwner);
+        generator.setUpkeepAddress(newUpkeep);
+        assertEq(generator.s_upkeepAddress(), newUpkeep);
 
-//     function test_updateStateOnElevate() public {
-//         uint256 tokenId = 1;
-//         bytes32 seed = bytes32(uint256(1));
-        
-//         // Should revert if not called by metadata renderer
-//         vm.prank(makeAddr("unauthorized"));
-//         vm.expectRevert(ValueGenerator.UnauthorizedMetadataRenderer.selector);
-//         generator.updateStateOnElevate(tokenId, seed);
-        
-//         // Should succeed when called by metadata renderer
-//         vm.prank(renderer);
-//         generator.updateStateOnElevate(tokenId, seed);
-        
-//         // Verify seed was stored (through getter)
-//         assertEq(generator.getTokenValuesSeed(tokenId), keccak256(abi.encodePacked(seed, generator.getElevatedTokenSeed())));
-//     }
+        // Test setting upkeep address by upkeep address (should fail)
+        vm.prank(newUpkeep);
+        vm.expectRevert("Ownable: caller is not the owner");
+        generator.setUpkeepAddress(address(2));
 
-//     // 5. Basic Value Generation Tests
-//     function test_GenerateValuesFromSeedsWithEmptySeeds() public {
-//         uint256 tokenId = 1;
-//         uint8[7] memory values = generator.generateValuesFromSeeds(tokenId);
-        
-//         // All values should be 0 since no seeds have been set
-//         for (uint256 i = 0; i < 7; i++) {
-//             assertEq(values[i], 0);
-//         }
-//     }
+        // Test setting zero address
+        vm.prank(newOwner);
+        vm.expectRevert(ValueGenerator.InvalidUpkeepAddress.selector);
+        generator.setUpkeepAddress(address(0));
+    }
 
-//     function test_GenerateValuesFromSeedsWithPartialSeeds() public {
-//         uint256 tokenId = 1;
-        
-//         // Update seeds only once
-//         vm.roll(block.number + 1);
-//         generator.updateGenesisTokenSeeds();
-        
-//         uint8[7] memory values = generator.generateValuesFromSeeds(tokenId);
-        
-//         // First value should be non-zero, rest should be zero
-//         assertTrue(values[0] > 0);
-//         for (uint256 i = 1; i < 7; i++) {
-//             assertEq(values[i], 0);
-//         }
-//     }
+    // 3. Genesis Token Seeds Tests
+    function test_updateGenesisTokenSeeds() public {
+        // Test update from owner
+        vm.expectEmit(true, false, false, true);
+        emit GenesisTokenSeedsUpdated(address(this), bytes32(0), block.timestamp);
+        generator.updateGenesisTokenSeeds();
 
-//     function test_GenerateValuesFromSeeds() public {
-//         uint256 tokenId = 1;
-        
-//         // Update seeds a few times
-//         uint256 currentTime = block.timestamp;
-//         for (uint256 i = 0; i < 3; i++) {
-//             // Advance both time and block number
-//             vm.warp(currentTime);
-//             vm.roll(block.number + 1);
-//             generator.updateGenesisTokenSeeds();
-//         }
+        // Test update from upkeep
+        vm.prank(upkeep);
+        generator.updateGenesisTokenSeeds();
+    }
 
-//         // Test default token (iteration 0)
-//         uint8[7] memory defaultValues = generator.generateValuesFromSeeds(tokenId);
+    function test_getGenesisTokenSeeds() public {
+        bytes32[7] memory seeds;
+        for (uint256 i = 0; i < seeds.length; i++) {
+            seeds[i] = generator.genesisTokenSeeds(i);
+        }
+        assertEq(seeds.length, 7);
+    }
 
-//         // Check that at least one value is non-zero
-//         bool hasNonZeroValue = false;
-//         for (uint256 i = 0; i < 7; i++) {
-//             if (defaultValues[i] != 0) {
-//                 hasNonZeroValue = true;
-//                 // Debug any failing values
-//                 assertTrue(defaultValues[i] <= Constants.MAX_RANDOM_VALUE, 
-//                     "Value exceeds MAX_RANDOM_VALUE");
-//             }
-//         }
-        
-//         assertTrue(hasNonZeroValue, "Should have at least one non-zero value");
-//         assertTrue(defaultValues[2] != 0, "Should have at least one non-zero value");
-//     }
+    function test_GenesisTokenSeedsArrayFull() public {
+        // Fill up the array
+        for (uint256 i = 0; i < 7; i++) {
+            generator.updateGenesisTokenSeeds();
+        }
 
-//     // 6. Advanced Value Generation Tests
-//     function test_GenerateValuesForMultipleTokens() public {
-//         uint256[] memory tokenIds = new uint256[](3);
-//         tokenIds[0] = 1;
-//         tokenIds[1] = 2;
-//         tokenIds[2] = 3;
-        
-//         // Update seeds
-//         vm.roll(block.number + 1);
-//         generator.updateGenesisTokenSeeds();
-        
-//         // Generate values for different tokens
-//         uint8[7] memory values1 = generator.generateValuesFromSeeds(tokenIds[0]);
-//         uint8[7] memory values2 = generator.generateValuesFromSeeds(tokenIds[1]);
-//         uint8[7] memory values3 = generator.generateValuesFromSeeds(tokenIds[2]);
-        
-//         // Values should be different for different tokens
-//         assertTrue(values1[0] != values2[0] || values2[0] != values3[0]);
-//     }
+        // Should revert when trying to add more seeds
+        vm.expectRevert(ValueGenerator.GenesisTokenSeedsArrayFull.selector);
+        generator.updateGenesisTokenSeeds();
+    }
 
-//     function test_TokenValueConsistency() public {
-//         uint256 tokenId = 1;
-        
-//         // Update seeds
-//         vm.roll(block.number + 1);
-//         generator.updateGenesisTokenSeeds();
-        
-//         // Generate values twice for same token
-//         uint8[7] memory values1 = generator.generateValuesFromSeeds(tokenId);
-//         uint8[7] memory values2 = generator.generateValuesFromSeeds(tokenId);
-        
-//         // Values should be identical for same token
-//         for (uint256 i = 0; i < 7; i++) {
-//             assertEq(values1[i], values2[i]);
-//         }
-//     }
+    // 4. Value Generation Tests
+    function test_generateValuesFromSeeds() public {
+        bytes32 tokenSeed = keccak256(abi.encodePacked("testSeed"));
+        uint8[7] memory values = generator.generateValuesFromSeeds(1, tokenSeed);
 
-//     function test_MaxValueBoundary() public {
-//         uint256 tokenId = 1;
-        
-//         // Update seeds multiple times
-//         for (uint256 i = 0; i < 7; i++) {
-//             vm.roll(block.number + 1);
-//             generator.updateGenesisTokenSeeds();
-//         }
-        
-//         uint8[7] memory values = generator.generateValuesFromSeeds(tokenId);
-        
-//         // All values should be within bounds
-//         for (uint256 i = 0; i < 7; i++) {
-//             assertTrue(values[i] <= Constants.MAX_RANDOM_VALUE);
-//             assertTrue(values[i] > 0);
-//         }
-//     }
+        for (uint256 i = 0; i < values.length; i++) {
+            assert(values[i] == 0);
+        }
 
- 
-//     // 7. Helper Function Tests
-//     function test_fastForwardReveal() public {
-//         generator.fastForwardReveal();
-        
-//         bytes32[7] memory seeds = generator.getGenesisTokenSeeds();
-//         for (uint256 i = 0; i < 7; i++) {
-//             assertTrue(seeds[i] != bytes32(0));
-//         }
-        
-//         // Generate values for a token after fast forward
-//         uint256 tokenId = 1;
-//         uint8[7] memory values = generator.generateValuesFromSeeds(tokenId);
-        
-//         // All values should be non-zero after fast forward
-//         for (uint256 i = 0; i < 7; i++) {
-//             assertTrue(values[i] > 0);
-//             assertTrue(values[i] <= Constants.MAX_RANDOM_VALUE);
-//         }
-//     }
-// }
+        // Test with a non-zero token seed
+        generator.updateGenesisTokenSeeds();
+        values = generator.generateValuesFromSeeds(1, tokenSeed);
+
+        // First value should be non-zero, second should be zero
+        assert(values[0] != 0);
+        assert(values[1] == 0);
+    }
+
+    // 6. Edge Case Tests
+    function test_PartiallyFilledGenesisTokenSeeds() public {
+        // Fill part of the array
+        for (uint256 i = 0; i < 3; i++) {
+            generator.updateGenesisTokenSeeds();
+        }
+
+        // Check that the array is partially filled
+        for (uint256 i = 0; i < 3; i++) {
+            assert(generator.genesisTokenSeeds(i) != 0);
+        }
+        for (uint256 i = 3; i < 7; i++) {
+            assert(generator.genesisTokenSeeds(i) == 0);
+        }
+    }
+}

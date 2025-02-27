@@ -16,71 +16,59 @@ contract ValueGenerator is IValueGenerator, Ownable {
     /*************************************/
     /*              Constants            */
     /*************************************/
-    /// @notice Size of the genesis token seeds array
-    /// @dev Fixed size array to maintain recent genesis token seeds
+    // @notice Size of the genesis token seeds array
+    // @dev Fixed size array to maintain recent genesis token seeds
     uint256 private constant SEED_ARRAY_SIZE = 7;
 
     /*************************************/
     /*              Storage             */
     /*************************************/
-    /// @notice Address authorized to perform automated seed updates
-    /// @dev Used by Chainlink Automation for periodic updates
+    // @notice Address authorized to perform automated seed updates
+    // @dev Used by Chainlink Automation for periodic updates
     address public s_upkeepAddress;
 
-    /// @notice Address authorized to render token metadata
-    /// @dev Must be set to interact with token minting and metadata
-    address public _metadataRendererAddress;
-
-    /// @notice Array of genesis token seeds used for value generation
-    /// @dev Seeds are used to generate values for tokens that were created by minting
+    // @notice Array of genesis token seeds used for value generation
+    // @dev Seeds are used to generate values for tokens that were created by minting
     bytes32[SEED_ARRAY_SIZE] public genesisTokenSeeds;
 
-    /// @notice Timestamp of the last seed update
-    /// @dev Used to enforce minimum time between updates
-    uint256 private _lastUpdateBlock;
-    
+    // @notice Timestamp of the last seed update
+    // @dev Used to enforce minimum time between updates
+    uint256 public lastUpdateBlock;
+
     /*************************************/
     /*              Events               */
     /*************************************/
-    /// @notice Emitted when genesis token seeds are updated
-    /// @param updater Address that triggered the update
-    /// @param timestamp Time of the update
-    event GenesisTokenSeedsUpdated(address indexed updater, uint256 timestamp);
+    // @notice Emitted when genesis token seeds are updated
+    // @param updater Address that triggered the update
+    // @param timestamp Time of the update
+    event GenesisTokenSeedsUpdated(address indexed updater, bytes32 indexed seed, uint256 timestamp);
 
     /*************************************/
     /*              Errors               */
     /*************************************/
-    /// @notice Thrown when block hash is invalid or zero
-    error InvalidBlockHash();
-    /// @notice Thrown when attempting to set invalid upkeep address
+    // @notice Thrown when attempting to set invalid upkeep address
     error InvalidUpkeepAddress();
-    /// @notice Thrown when update interval is invalid
-    error InvalidInterval();
-    /// @notice Thrown when metadata renderer address is invalid
-    error InvalidMetadataRenderer();
-    /// @notice Thrown when attempting to update seeds before required interval
-    error InsufficientTimePassed();
-    /// @notice Thrown when unauthorized address calls restricted function
+    // @notice Thrown when unauthorized address calls restricted function
     error UnauthorizedCaller();
-    /// @notice Thrown when non-metadata-renderer calls restricted function
-    error UnauthorizedMetadataRenderer();
-    /// @notice Thrown when the genesis token seeds array is full
+    // @notice Thrown when the genesis token seeds array is full
     error GenesisTokenSeedsArrayFull();
 
     /*************************************/
     /*              Constructor          */
     /*************************************/
+
     /**
      * @notice Initializes the contract with the current block timestamp
-     * @dev Sets initial _lastUpdateBlock to prevent immediate updates
+     * @dev Sets initial lastUpdateBlock to prevent immediate updates
      */
     constructor() {
-        _lastUpdateBlock = block.timestamp;
+        lastUpdateBlock = block.timestamp;
     }
 
     /*************************************/
     /*              Modifiers            */
     /*************************************/
+
     /**
      * @notice Restricts function access to upkeep address or contract owner
      * @dev Used for functions that update seeds
@@ -92,20 +80,10 @@ contract ValueGenerator is IValueGenerator, Ownable {
         _;
     }
 
-    /**
-     * @notice Restricts function access to metadata renderer contract
-     * @dev Used for functions that interact with token minting
-     */
-    modifier onlyMetadataRenderer() {
-        if (msg.sender != _metadataRendererAddress) {
-            revert UnauthorizedMetadataRenderer();
-        }
-        _;
-    }
-
     /*************************************/
     /*              Setters              */
     /*************************************/
+
     /**
      * @notice Sets the address authorized for automated upkeep
      * @dev Only callable by contract owner
@@ -116,45 +94,36 @@ contract ValueGenerator is IValueGenerator, Ownable {
         s_upkeepAddress = upkeep;
     }
 
-    /**
-     * @notice Sets the authorized metadata renderer address
-     * @dev Only callable by contract owner
-     * @param renderer Address of the metadata renderer contract
-     */
-    function setMetadataRenderer(address renderer) external onlyOwner {
-        if (renderer == address(0)) revert InvalidMetadataRenderer();
-        _metadataRendererAddress = renderer;
-    }
-
     /*************************************/
     /*              External             */
     /*************************************/
+
     /**
      * @notice Updates genesis token seeds after the required interval
      * @dev Can be called by upkeep address or owner
      *      Generates new seed, updates array, and updates last update block
      */
     function updateGenesisTokenSeeds() external onlyUpkeepOrOwner {
-        bytes32 newSeed = Utils.getNewRandomSeed();
+        bytes32 newSeed = Utils.generateRandomSeed();
         _updateGenesisTokenSeeds(newSeed);
-        _lastUpdateBlock = block.timestamp;
-        
-        emit GenesisTokenSeedsUpdated(msg.sender, block.timestamp);
+        lastUpdateBlock = block.timestamp;
+
+        emit GenesisTokenSeedsUpdated(msg.sender, newSeed, block.timestamp);
     }
 
     /**
      * @notice Generates values for a specific token
-     * @dev Values depend on token's mint iteration and current seeds
+     * @dev Values depend on token's seed and the current seeds
      * @param tokenId The token ID to generate values for
+     * @param tokenSeed The seed for the token
      * @return Array of SEED_ARRAY_SIZE values between 1 and MAX_RANDOM_VALUE
      */
-    function generateValuesFromSeeds(uint256 tokenId, bytes32 tokenSeed)
-        external 
-        view 
-        returns (uint8[SEED_ARRAY_SIZE] memory) 
-    {
+    function generateValuesFromSeeds(
+        uint256 tokenId,
+        bytes32 tokenSeed
+    ) external view returns (uint8[SEED_ARRAY_SIZE] memory) {
         uint8[SEED_ARRAY_SIZE] memory values;
-        
+
         for (uint256 i = 0; i < SEED_ARRAY_SIZE; i++) {
             if (genesisTokenSeeds[i] != 0) {
                 values[i] = _generateSingleValue(genesisTokenSeeds[i], tokenSeed, tokenId);
@@ -166,6 +135,7 @@ contract ValueGenerator is IValueGenerator, Ownable {
     /*************************************/
     /*              Internal             */
     /*************************************/
+
     /**
      * @notice Updates the genesis token seeds array with a new seed
      * @param newSeed The new seed to add to the array
@@ -187,19 +157,19 @@ contract ValueGenerator is IValueGenerator, Ownable {
      * @param tokenId The token ID to generate value for
      * @return Value between 1 and MAX_RANDOM_VALUE
      */
-    function _generateSingleValue(bytes32 genesisSeed, bytes32 tokenSeed, uint256 tokenId) 
-        private 
-        pure 
-        returns (uint8) 
-    {
+    function _generateSingleValue(
+        bytes32 genesisSeed,
+        bytes32 tokenSeed,
+        uint256 tokenId
+    ) private pure returns (uint8) {
         bytes32 combinedSeed = keccak256(abi.encodePacked(genesisSeed, tokenId, tokenSeed));
         return uint8((uint256(combinedSeed) % Constants.MAX_RANDOM_VALUE) + 1);
     }
 
-
     /*************************************/
     /*              Test Functions       */
     /*************************************/
+
     /**
      * Test function to fast forward the reveal of the first 6 tokens
      */
@@ -211,6 +181,6 @@ contract ValueGenerator is IValueGenerator, Ownable {
         _updateGenesisTokenSeeds(0x0000000000000000000000000000000000000000000000000000000000000005);
         _updateGenesisTokenSeeds(0x0000000000000000000000000000000000000000000000000000000000000006);
         _updateGenesisTokenSeeds(0x0000000000000000000000000000000000000000000000000000000000000007);
-        _lastUpdateBlock = block.timestamp;
+        lastUpdateBlock = block.timestamp;
     }
 }

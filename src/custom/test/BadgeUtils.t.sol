@@ -46,11 +46,13 @@ contract BadgeUtilsTest is Test {
         uint8[7] memory validLateCase = [10, 20, 95, 4, 50, 60, 70];
         uint8[7] memory invalidCase = [95, 10, 50, 60, 70, 80, 90];
         uint8[7] memory invalidZeroCase = [95, 0, 50, 60, 70, 80, 90];
+        uint8[7] memory unrevealedCase = [95, 10, 50, 60, 93, 0, 0];
 
         assertTrue(BadgeUtils.isBlackSwan(validCase));
         assertTrue(BadgeUtils.isBlackSwan(validLateCase));
         assertFalse(BadgeUtils.isBlackSwan(invalidCase));
         assertFalse(BadgeUtils.isBlackSwan(invalidZeroCase));
+        assertFalse(BadgeUtils.isBlackSwan(unrevealedCase));
     }
 
     function testMoon() public {
@@ -58,11 +60,13 @@ contract BadgeUtilsTest is Test {
         uint8[7] memory validLateCase = [10, 20, 30, 40, 5, 96, 90];
         uint8[7] memory invalidCase = [5, 94, 50, 60, 70, 80, 90];
         uint8[7] memory invalidZeroCase = [5, 0, 50, 60, 70, 80, 90];
+        uint8[7] memory unrevealedCase = [5, 96, 50, 60, 93, 0, 0];
 
         assertTrue(BadgeUtils.isMoon(validCase));
         assertTrue(BadgeUtils.isMoon(validLateCase));
         assertFalse(BadgeUtils.isMoon(invalidCase));
         assertFalse(BadgeUtils.isMoon(invalidZeroCase));
+        assertTrue(BadgeUtils.isMoon(unrevealedCase));
     }
 
     function testComeback() public {
@@ -103,104 +107,101 @@ contract BadgeUtilsTest is Test {
 
     // ... existing code ...
 
-function testHighRollerEdgeCases() public {
-    // Test exactly 75 for all values (minimum threshold)
-    uint8[7] memory allSeventyFive = [76, 76, 76, 76, 76, 76, 76];
-    // Test mixed case with exactly 75
-    uint8[7] memory mixedWithSeventyFive = [76, 76, 80, 76, 90, 76, 85];
-    // Test single value below 75
-    uint8[7] memory singleFailure = [100, 100, 50, 100, 100, 100, 100];
+    function testHighRollerEdgeCases() public {
+        // Test exactly 75 for all values (minimum threshold)
+        uint8[7] memory allSeventyFive = [76, 76, 76, 76, 76, 76, 76];
+        // Test mixed case with exactly 75
+        uint8[7] memory mixedWithSeventyFive = [76, 76, 80, 76, 90, 76, 85];
+        // Test single value below 75
+        uint8[7] memory singleFailure = [100, 100, 50, 100, 100, 100, 100];
 
-    assertTrue(BadgeUtils.isHighRoller(allSeventyFive));
-    assertTrue(BadgeUtils.isHighRoller(mixedWithSeventyFive));
-    assertFalse(BadgeUtils.isHighRoller(singleFailure));
-}
+        assertTrue(BadgeUtils.isHighRoller(allSeventyFive));
+        assertTrue(BadgeUtils.isHighRoller(mixedWithSeventyFive));
+        assertFalse(BadgeUtils.isHighRoller(singleFailure));
+    }
 
-function testLowStakesEdgeCases() public {
-    // Test exactly 25 (maximum threshold)
-    uint8[7] memory allTwentyFive = [24, 24, 24, 24, 24, 24, 24];
-    // Test mixed case with exactly 25
-    uint8[7] memory mixedWithTwentyFive = [20, 24, 15, 24, 10, 24, 5];
-    // Test single value above 25
-    uint8[7] memory singleFailure = [10, 10, 50, 10, 10, 10, 10];
+    function testLowStakesEdgeCases() public {
+        // Test exactly 25 (maximum threshold)
+        uint8[7] memory allTwentyFive = [24, 24, 24, 24, 24, 24, 24];
+        // Test mixed case with exactly 25
+        uint8[7] memory mixedWithTwentyFive = [20, 24, 15, 24, 10, 24, 5];
+        // Test single value above 25
+        uint8[7] memory singleFailure = [10, 10, 50, 10, 10, 10, 10];
 
-    assertTrue(BadgeUtils.isLowStakes(allTwentyFive));
-    assertTrue(BadgeUtils.isLowStakes(mixedWithTwentyFive));
-    assertFalse(BadgeUtils.isLowStakes(singleFailure));
-}
+        assertTrue(BadgeUtils.isLowStakes(allTwentyFive));
+        assertTrue(BadgeUtils.isLowStakes(mixedWithTwentyFive));
+        assertFalse(BadgeUtils.isLowStakes(singleFailure));
+    }
 
-function testBlackSwanEdgeCases() public {
-    // Test minimum drop (91 to 4)
-    uint8[7] memory minimumDrop = [91, 1, 50, 60, 70, 80, 90];
-    // Test maximum low value (5)
-    uint8[7] memory maximumLow = [95, 5, 50, 60, 70, 80, 90];
-    // Test pattern at end of array
-    uint8[7] memory endPattern = [10, 20, 30, 40, 50, 95, 4];
-    // Test invalid minimum drop
-    uint8[7] memory invalidMinDrop = [90, 4, 50, 60, 70, 80, 90];
+    function testBlackSwanEdgeCases() public {
+        // Test minimum drop (91 to 4)
+        uint8[7] memory minimumDrop = [91, 1, 50, 60, 70, 80, 90];
+        // Test maximum low value (5)
+        uint8[7] memory maximumLow = [95, 5, 50, 60, 70, 80, 90];
+        // Test pattern at end of array
+        uint8[7] memory endPattern = [10, 20, 30, 40, 50, 95, 4];
+        // Test invalid minimum drop
+        uint8[7] memory invalidMinDrop = [90, 4, 50, 60, 70, 80, 90];
 
-    string memory errorMsg = "Expected minimum drop (91->4) to qualify as BlackSwan but it did not";
-    assertEq(BadgeUtils.isBlackSwan(minimumDrop), true, errorMsg);
-    errorMsg = "Expected maximum low value (5) to qualify as BlackSwan but it did not";
-    assertEq(BadgeUtils.isBlackSwan(maximumLow), true, errorMsg);
-    errorMsg = "Expected end pattern to qualify as BlackSwan but it did not";
-    assertEq(BadgeUtils.isBlackSwan(endPattern), true, errorMsg);
-    errorMsg = "Expected invalid minimum drop to not qualify as BlackSwan but it did";
-    assertEq(BadgeUtils.isBlackSwan(invalidMinDrop), false, errorMsg);
-}
+        string memory errorMsg = "Expected minimum drop (91->4) to qualify as BlackSwan but it did not";
+        assertEq(BadgeUtils.isBlackSwan(minimumDrop), true, errorMsg);
+        errorMsg = "Expected maximum low value (5) to qualify as BlackSwan but it did not";
+        assertEq(BadgeUtils.isBlackSwan(maximumLow), true, errorMsg);
+        errorMsg = "Expected end pattern to qualify as BlackSwan but it did not";
+        assertEq(BadgeUtils.isBlackSwan(endPattern), true, errorMsg);
+        errorMsg = "Expected invalid minimum drop to not qualify as BlackSwan but it did";
+        assertEq(BadgeUtils.isBlackSwan(invalidMinDrop), false, errorMsg);
+    }
 
-function testMoonEdgeCases() public {
-    // Test minimum rise (5 to 95)
-    uint8[7] memory minimumRise = [5, 95, 50, 60, 70, 80, 90];
-    // Test maximum initial value (5)
-    uint8[7] memory maximumStart = [5, 96, 50, 60, 70, 80, 90];
-    // Test pattern at end of array
-    uint8[7] memory endPattern = [10, 20, 30, 40, 50, 5, 96];
-    // Test invalid minimum rise
-    uint8[7] memory invalidMinRise = [5, 94, 50, 60, 70, 80, 90];
+    function testMoonEdgeCases() public {
+        // Test minimum rise (5 to 95)
+        uint8[7] memory minimumRise = [5, 95, 50, 60, 70, 80, 90];
+        // Test maximum initial value (5)
+        uint8[7] memory maximumStart = [5, 96, 50, 60, 70, 80, 90];
+        // Test pattern at end of array
+        uint8[7] memory endPattern = [10, 20, 30, 40, 50, 5, 96];
+        // Test invalid minimum rise
+        uint8[7] memory invalidMinRise = [5, 94, 50, 60, 70, 80, 90];
 
-    assertTrue(BadgeUtils.isMoon(minimumRise));
-    assertTrue(BadgeUtils.isMoon(maximumStart));
-    assertTrue(BadgeUtils.isMoon(endPattern));
-    assertFalse(BadgeUtils.isMoon(invalidMinRise));
-}
+        assertTrue(BadgeUtils.isMoon(minimumRise));
+        assertTrue(BadgeUtils.isMoon(maximumStart));
+        assertTrue(BadgeUtils.isMoon(endPattern));
+        assertFalse(BadgeUtils.isMoon(invalidMinRise));
+    }
 
-function testComebackAndRagsEdgeCases() public {
-    // Test exactly 10 start (invalid for both)
-    uint8[7] memory exactlyTen = [10, 20, 30, 40, 50, 60, 90];
-    // Test exactly 75/90 end thresholds
-    uint8[7] memory exactThresholds = [5, 20, 30, 40, 50, 60, 76];
-    
-    assertFalse(
-        BadgeUtils.isComeback(exactlyTen),
-        "Starting value of 10 should not qualify for Comeback badge"
-    );
-    assertFalse(
-        BadgeUtils.isRagsToRiches(exactlyTen),
-        "Starting value of 10 should not qualify for RagsToRiches badge"
-    );
-    assertTrue(
-        BadgeUtils.isComeback(exactThresholds),
-        "Ending value of exactly 76 should qualify for Comeback badge"
-    );
-    assertFalse(
-        BadgeUtils.isRagsToRiches(exactThresholds),
-        "Ending value of 76 should not qualify for RagsToRiches badge (requires 90+)"
-    );
-}
+    function testComebackAndRagsEdgeCases() public {
+        // Test exactly 10 start (invalid for both)
+        uint8[7] memory exactlyTen = [10, 20, 30, 40, 50, 60, 90];
+        // Test exactly 75/90 end thresholds
+        uint8[7] memory exactThresholds = [5, 20, 30, 40, 50, 60, 76];
 
-function testFumbledEdgeCases() public {
-    // Test exactly 90 start
-    uint8[7] memory exactlyNinety = [90, 80, 70, 60, 50, 40, 5];
-    // Test exactly 10 end
-    uint8[7] memory exactlyTenEnd = [95, 80, 70, 60, 50, 40, 10];
-    // Test non-monotonic decrease
-    uint8[7] memory nonMonotonic = [95, 80, 85, 60, 50, 40, 5];
-    
-    assertTrue(BadgeUtils.isFumbled(exactlyNinety));
-    assertFalse(BadgeUtils.isFumbled(exactlyTenEnd));
-    assertTrue(BadgeUtils.isFumbled(nonMonotonic));
-}
+        assertFalse(BadgeUtils.isComeback(exactlyTen), "Starting value of 10 should not qualify for Comeback badge");
+        assertFalse(
+            BadgeUtils.isRagsToRiches(exactlyTen),
+            "Starting value of 10 should not qualify for RagsToRiches badge"
+        );
+        assertTrue(
+            BadgeUtils.isComeback(exactThresholds),
+            "Ending value of exactly 76 should qualify for Comeback badge"
+        );
+        assertFalse(
+            BadgeUtils.isRagsToRiches(exactThresholds),
+            "Ending value of 76 should not qualify for RagsToRiches badge (requires 90+)"
+        );
+    }
+
+    function testFumbledEdgeCases() public {
+        // Test exactly 90 start
+        uint8[7] memory exactlyNinety = [90, 80, 70, 60, 50, 40, 5];
+        // Test exactly 10 end
+        uint8[7] memory exactlyTenEnd = [95, 80, 70, 60, 50, 40, 10];
+        // Test non-monotonic decrease
+        uint8[7] memory nonMonotonic = [95, 80, 85, 60, 50, 40, 5];
+
+        assertTrue(BadgeUtils.isFumbled(exactlyNinety));
+        assertFalse(BadgeUtils.isFumbled(exactlyTenEnd));
+        assertTrue(BadgeUtils.isFumbled(nonMonotonic));
+    }
 
     function testSpike() public {
         // Valid spike cases
@@ -266,44 +267,38 @@ function testFumbledEdgeCases() public {
     function testSymmetricalFuzz(uint8 midpoint) public {
         // Bound midpoint to avoid overflows when adding/subtracting
         midpoint = uint8(bound(midpoint, 7, 92));
-        
+
         uint8[7] memory values;
         values[3] = midpoint; // Center value
-        
+
         // Generate random variations within ±5 for the first half
         for (uint i = 0; i < 3; i++) {
             uint8 variation = uint8(bound(uint(keccak256(abi.encode(midpoint, i))), 0, 7));
             values[i] = midpoint + variation;
             // Mirror the values
-            values[6-i] = values[i];
+            values[6 - i] = values[i];
         }
-        
-        assertTrue(
-            BadgeUtils.isSymmetrical(values, 4),
-            "Symmetrical values within +/-5 should be valid"
-        );
+
+        assertTrue(BadgeUtils.isSymmetrical(values, 4), "Symmetrical values within +/-5 should be valid");
     }
 
     function testSymmetricalFuzzInvalid(uint8 midpoint) public {
         // Bound midpoint to avoid overflows when adding/subtracting
         midpoint = uint8(bound(midpoint, 7, 92));
-        
+
         uint8[7] memory values;
         values[3] = midpoint; // Center value
-        
+
         // Generate random variations within ±5 for most values
         for (uint i = 0; i < 3; i++) {
             uint8 variation = uint8(bound(uint(keccak256(abi.encode(midpoint, i))), 0, 7));
             values[i] = midpoint + variation;
-            values[6-i] = values[i];
+            values[6 - i] = values[i];
         }
-        
+
         // Make one value asymmetric by adding more than 7
         values[6] = values[0] + 8;
-        
-        assertFalse(
-            BadgeUtils.isSymmetrical(values, 4),
-            "Asymmetrical values beyond +/-5 should be invalid"
-        );
+
+        assertFalse(BadgeUtils.isSymmetrical(values, 4), "Asymmetrical values beyond +/-5 should be invalid");
     }
 }

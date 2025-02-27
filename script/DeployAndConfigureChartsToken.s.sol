@@ -10,28 +10,35 @@ import { PublicDrop } from "../src/lib/SeaDropStructs.sol";
 import { Strings } from "openzeppelin-contracts/utils/Strings.sol";
 import { Constants } from "../src/custom/libraries/Constants.sol";
 import { MetadataImplementation } from "../src/custom/MetadataImplementation.sol";
+import { MetadataBadges } from "../src/custom/MetadataBadges.sol";
+import { MetadataPatterns } from "../src/custom/MetadataPatterns.sol";
 
 contract DeployAndConfigureChartsToken is Script {
     using Strings for uint256;
-    
+
     // Addresses
     address seadrop = 0x00005EA00Ac477B1030CE78506496e8C2dE24bf5;
     address creator = 0x49A177C521B8b0710330392b862293716E2237B9;
-    address feeRecipient = 0x49A177C521B8b0710330392b862293716E2237B9;
+    address feeRecipient = 0x0000a26b00c1F0DF003000390027140000fAa719;
     address chainlinkForwarder = 0x586E12fa9369D1496870E16933C35a8Ba1292007;
-    
+
     // Token config
-    uint256 maxSupply = 10_000;
+    uint256 maxSupply = 200_000_000;
 
     // Drop config
     uint16 feeBps = 500; // 5%
     uint80 mintPrice = 0.0000 ether;
-    uint16 maxTotalMintableByWallet = 10_000;
+    uint16 maxTotalMintableByWallet = 50_000;
 
     ChartsERC721SeaDrop token;
     ValueGenerator valueGenerator;
     MetadataRenderer renderer;
     MetadataImplementation metadataImplementation;
+    MetadataBadges metadataBadges;
+    MetadataPatterns metadataPatterns;
+
+    uint256[] elevatedTokenIds; // Array to store elevated token IDs
+    uint256[] rareTokenIds;
 
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
@@ -42,32 +49,28 @@ contract DeployAndConfigureChartsToken is Script {
         allowedSeadrop[0] = seadrop;
 
         // Deploy NFT contract
-        token = new ChartsERC721SeaDrop(
-            "asdfsd",
-            "CXJKS",
-            allowedSeadrop
-        );
+        token = new ChartsERC721SeaDrop("asdfsd", "CXJKS", allowedSeadrop);
+
+        // Deploy MetadataBadges
+        metadataBadges = new MetadataBadges();
+
+        // Deploy MetadataPatterns
+        metadataPatterns = new MetadataPatterns();
 
         // Deploy ValueGenerator
         valueGenerator = new ValueGenerator();
 
+        // Set the upkeep address
         valueGenerator.setUpkeepAddress(chainlinkForwarder);
 
         // Deploy MetadataImplementation
-        metadataImplementation = new MetadataImplementation();
+        metadataImplementation = new MetadataImplementation(address(metadataBadges), address(metadataPatterns));
 
         // Deploy MetadataRenderer with MetadataImplementation address
-        renderer = new MetadataRenderer(
-            address(token),
-            address(valueGenerator),
-            address(metadataImplementation)
-        );
+        renderer = new MetadataRenderer(address(token), address(metadataImplementation), address(valueGenerator));
 
         // Set the MetadataRenderer in the NFT contract
         token.setMetadataRenderer(address(renderer));
-
-        // Set the MetadataRenderer in the ValueGenerator contract
-        valueGenerator.setMetadataRenderer(address(renderer));
 
         // Configure the token
         token.setMaxSupply(maxSupply);
@@ -86,49 +89,60 @@ contract DeployAndConfigureChartsToken is Script {
                 true
             )
         );
-        
-        // Mint initial tokens
-        ISeaDrop(seadrop).mintPublic{ value: mintPrice * 500 }(
-            address(token),
-            feeRecipient,
-            address(0),
-            500 // quantity
-        );
+
+        // Enable elevation
+        token.setElevationStatus(true);
+
+        // Mint initial tokens in batches
+        uint256 batchSize = 100; // Adjust the batch size as needed
+        uint256 totalTokensToMint = 5_000;
+        uint256 numBatches = totalTokensToMint / batchSize;
+
+        for (uint256 j = 0; j < numBatches; j++) {
+            ISeaDrop(seadrop).mintPublic{ value: mintPrice * batchSize }(
+                address(token),
+                feeRecipient,
+                address(0),
+                batchSize // quantity
+            );
+        }
 
         // transfer nfts with token ids 20-25 to an address
         for (uint256 i = 20; i <= 25; i++) {
             token.transferFrom(creator, 0xf52c69161f6f22A2A6A0DF110E3F40C2a5a0a702, i);
         }
 
-        // ===== CHROMATIC =====
-        uint256 numChromaticPalettes = 12;
+        // ===== RARE =====
+        uint256 numRarePalettes = 100;
+        uint256 offset = 100;
 
         // Convert first 24 tokens into 6 chromatic palettes (4 tokens each)
-        for (uint256 i = 100; i < numChromaticPalettes; i++) {
+        for (uint256 i = offset; i < numRarePalettes + offset; i += 2) {
             uint256[] memory tokenIds = new uint256[](2);
-            tokenIds[0] = (i * 4) + 1;
-            tokenIds[1] = (i * 4) + 2;
+            tokenIds[0] = i;
+            tokenIds[1] = i + 1;
             token.elevate(tokenIds[0], tokenIds[1]);
+
+            // Store the first tokenId in the elevatedTokenIds array
+            elevatedTokenIds.push(tokenIds[0]);
+        }
+
+        // Elevate the first 100 tokens from the elevatedTokenIds array
+        for (uint256 i = 0; i < 20 && i < elevatedTokenIds.length; i += 2) {
+            uint256 elevateTokenId = elevatedTokenIds[i];
+            uint256 burnTokenId = elevatedTokenIds[i + 1];
+            token.elevate(elevateTokenId, burnTokenId);
+
+            rareTokenIds.push(elevateTokenId);
+        }
+
+        for (uint256 i = 0; i < 4 && i < rareTokenIds.length; i += 2) {
+            uint256 elevateTokenId = rareTokenIds[i];
+            uint256 burnTokenId = rareTokenIds[i + 1];
+            token.elevate(elevateTokenId, burnTokenId);
         }
 
         valueGenerator.fastForwardReveal();
-
-        // // ===== PASTEL =====
-        // for (uint256 i = 0; i < numPastelPalettes; i++) {
-        //     uint256[] memory tokenIds = new uint256[](3);
-        //     for (uint256 j = 0; j < 3; j++) {
-        //         tokenIds[j] = (i * 3) + j + 1 + numChromaticPalettes + maxSupply;
-        //     }
-        //     token.convertTokens(tokenIds, 5);
-        // }
-
-        // // trade in 4 tokens for a new palette
-        // uint256[] memory tokenIds8 = new uint256[](2);
-        // tokenIds8[0] = 10_007;
-        // tokenIds8[1] = 10_008;
-        // token.convertTokens(tokenIds8, 6);
-
-        // vm.stopBroadcast();
 
         // Print all deployed contract addresses
         console.log("=== Deployed Contract Addresses ===");
