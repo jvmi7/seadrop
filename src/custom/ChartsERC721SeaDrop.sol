@@ -65,6 +65,7 @@ contract ChartsERC721SeaDrop is ERC721SeaDrop, IChartsErrors {
      * @dev Only callable by contract owner
      */
     function setMetadataRenderer(address _metadataRenderer) external onlyOwner {
+        if (_metadataRenderer == address(0)) revert InvalidAddress(_metadataRenderer);
         address oldRenderer = address(metadataRenderer);
         metadataRenderer = IMetadataRenderer(_metadataRenderer);
         emit MetadataRendererUpdated(_metadataRenderer, oldRenderer);
