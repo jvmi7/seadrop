@@ -175,7 +175,7 @@ contract ChartsERC721SeaDropTest is Test {
 
         // make sure the token tier is updated
         uint8 tier = MetadataUtils.calculateTierFromPalette(palette);
-        assertEq(tier, Constants.RARE_TIER);
+        assertEq(tier, Constants.ELEVATED_TIER);
     }
 
     function testReentrancyOnElevate() public {

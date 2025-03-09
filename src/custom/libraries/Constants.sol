@@ -32,9 +32,9 @@ library Constants {
 
     // @notice Tier indices for different color schemes
     uint8 constant GENESIS_TIER = 1;
-    uint8 constant RARE_TIER = 2;
-    uint8 constant SUPER_RARE_TIER = 3;
-    uint8 constant ULTRA_RARE_TIER = 4;
+    uint8 constant ELEVATED_TIER = 2;
+    uint8 constant ULTRA_TIER = 3;
+    uint8 constant ELITE_TIER = 4;
     uint8 constant LEGENDARY_TIER = 5;
 
     // NFT metadata constants

@@ -165,22 +165,4 @@ contract ValueGenerator is IValueGenerator, Ownable {
         bytes32 combinedSeed = keccak256(abi.encodePacked(genesisSeed, tokenId, tokenSeed));
         return uint8((uint256(combinedSeed) % Constants.MAX_RANDOM_VALUE) + 1);
     }
-
-    /*************************************/
-    /*              Test Functions       */
-    /*************************************/
-
-    /**
-     * Test function to fast forward the reveal of the first 6 tokens
-     */
-    function fastForwardReveal() external {
-        _updateGenesisTokenSeeds(0x0000000000000000000000000000000000000000000000000000000000000001);
-        _updateGenesisTokenSeeds(0x0000000000000000000000000000000000000000000000000000000000000002);
-        _updateGenesisTokenSeeds(0x0000000000000000000000000000000000000000000000000000000000000003);
-        _updateGenesisTokenSeeds(0x0000000000000000000000000000000000000000000000000000000000000004);
-        _updateGenesisTokenSeeds(0x0000000000000000000000000000000000000000000000000000000000000005);
-        _updateGenesisTokenSeeds(0x0000000000000000000000000000000000000000000000000000000000000006);
-        _updateGenesisTokenSeeds(0x0000000000000000000000000000000000000000000000000000000000000007);
-        lastUpdateBlock = block.timestamp;
-    }
 }

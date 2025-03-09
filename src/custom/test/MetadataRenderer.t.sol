@@ -174,7 +174,7 @@ contract MetadataRendererTest is Test {
         assertEq(metadataRenderer.tokenSeeds(18), 0, "Burn token seed was not updated");
 
         // Make sure the tier is updated
-        assertEq(MetadataUtils.calculateTierFromPalette(palette), Constants.RARE_TIER);
+        assertEq(MetadataUtils.calculateTierFromPalette(palette), Constants.ELEVATED_TIER);
     }
 
     function test_higherTierElevation() public {
@@ -199,7 +199,7 @@ contract MetadataRendererTest is Test {
 
         assertEq(validElevation, true, "Token palette is not valid for elevation");
         // Make sure the tier is updated
-        assertEq(MetadataUtils.calculateTierFromPalette(palette), Constants.SUPER_RARE_TIER);
+        assertEq(MetadataUtils.calculateTierFromPalette(palette), Constants.ULTRA_TIER);
 
         // Elevate the token to tier 3
         vm.prank(nftContract);
@@ -215,6 +215,6 @@ contract MetadataRendererTest is Test {
         palette = metadataRenderer.tokenPalettes(17);
         assertEq(palette, Constants.GREYSCALE, "Token palette is not valid for elevation");
         // Make sure the tier is updated
-        assertEq(MetadataUtils.calculateTierFromPalette(palette), Constants.ULTRA_RARE_TIER);
+        assertEq(MetadataUtils.calculateTierFromPalette(palette), Constants.ELITE_TIER);
     }
 }

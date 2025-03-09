@@ -162,7 +162,7 @@ contract MetadataImplementation is Ownable {
         traits = string(
             abi.encodePacked(
                 traits,
-                MetadataUtils.formatAttribute(" [ tier ]", MetadataUtils.getTierName(metadata.tier))
+                MetadataUtils.formatAttribute("[ tier ]", MetadataUtils.getTierName(metadata.tier))
             )
         );
 
