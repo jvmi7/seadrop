@@ -67,7 +67,7 @@ contract PatternUtilsTest is Test {
         assertTrue(PatternUtils.isPeak(values4, reversals4));
     }
 
-    function test_Valley() public { 
+    function test_Valley() public {
         // Valley pattern
         uint8[7] memory values = [4, 3, 2, 1, 2, 3, 4];
         uint8 reversals = PatternUtils.countReversals(values);
@@ -95,46 +95,46 @@ contract PatternUtilsTest is Test {
 
     function test_UpDownUp() public {
         // Base UpDownUp pattern
-        
+
         uint8[7] memory values = [1, 2, 3, 2, 1, 2, 3];
         uint8 reversals = PatternUtils.countReversals(values);
-        assertEq(PatternUtils.getPattern(values), "\u2191\u2193\u2191");
+        assertEq(PatternUtils.getPattern(values), "up down up");
         assertTrue(PatternUtils.isUpDownUp(values, reversals));
 
         // Stagnant values in first upward trend
         uint8[7] memory values2 = [1, 1, 3, 2, 1, 2, 3];
         uint8 reversals2 = PatternUtils.countReversals(values2);
-        assertEq(PatternUtils.getPattern(values2), "\u2191\u2193\u2191");
+        assertEq(PatternUtils.getPattern(values2), "up down up");
         assertTrue(PatternUtils.isUpDownUp(values2, reversals2));
 
         // Stagnant values at first peak
         uint8[7] memory values3 = [1, 2, 3, 3, 1, 2, 3];
         uint8 reversals3 = PatternUtils.countReversals(values3);
-        assertEq(PatternUtils.getPattern(values3), "\u2191\u2193\u2191");
+        assertEq(PatternUtils.getPattern(values3), "up down up");
         assertTrue(PatternUtils.isUpDownUp(values3, reversals3));
 
         // Stagnant values during downward trend
         uint8[7] memory values4 = [1, 2, 3, 2, 2, 2, 3];
         uint8 reversals4 = PatternUtils.countReversals(values4);
-        assertEq(PatternUtils.getPattern(values4), "\u2191\u2193\u2191");
+        assertEq(PatternUtils.getPattern(values4), "up down up");
         assertTrue(PatternUtils.isUpDownUp(values4, reversals4));
 
         // Stagnant values at valley
         uint8[7] memory values5 = [1, 2, 3, 2, 1, 1, 3];
         uint8 reversals5 = PatternUtils.countReversals(values5);
-        assertEq(PatternUtils.getPattern(values5), "\u2191\u2193\u2191");
+        assertEq(PatternUtils.getPattern(values5), "up down up");
         assertTrue(PatternUtils.isUpDownUp(values5, reversals5));
 
         // Stagnant values in final upward trend
         uint8[7] memory values6 = [1, 2, 3, 2, 1, 2, 2];
         uint8 reversals6 = PatternUtils.countReversals(values6);
-        assertEq(PatternUtils.getPattern(values6), "\u2191\u2193\u2191");
+        assertEq(PatternUtils.getPattern(values6), "up down up");
         assertTrue(PatternUtils.isUpDownUp(values6, reversals6));
 
         // Multiple stagnant regions
         uint8[7] memory values7 = [1, 1, 3, 2, 1, 1, 2];
         uint8 reversals7 = PatternUtils.countReversals(values7);
-        assertEq(PatternUtils.getPattern(values7), "\u2191\u2193\u2191");
+        assertEq(PatternUtils.getPattern(values7), "up down up");
         assertTrue(PatternUtils.isUpDownUp(values7, reversals7));
     }
 
@@ -142,43 +142,43 @@ contract PatternUtilsTest is Test {
         // Base DownUpDown pattern
         uint8[7] memory values = [3, 2, 1, 2, 3, 2, 1];
         uint8 reversals = PatternUtils.countReversals(values);
-        assertEq(PatternUtils.getPattern(values), "\u2193\u2191\u2193");
+        assertEq(PatternUtils.getPattern(values), "down up down");
         assertTrue(PatternUtils.isDownUpDown(values, reversals));
 
         // Stagnant values in first downward trend
         uint8[7] memory values2 = [3, 3, 1, 2, 3, 2, 1];
         uint8 reversals2 = PatternUtils.countReversals(values2);
-        assertEq(PatternUtils.getPattern(values2), "\u2193\u2191\u2193");
+        assertEq(PatternUtils.getPattern(values2), "down up down");
         assertTrue(PatternUtils.isDownUpDown(values2, reversals2));
 
         // Stagnant values at first valley
         uint8[7] memory values3 = [3, 2, 1, 1, 3, 2, 1];
         uint8 reversals3 = PatternUtils.countReversals(values3);
-        assertEq(PatternUtils.getPattern(values3), "\u2193\u2191\u2193");
+        assertEq(PatternUtils.getPattern(values3), "down up down");
         assertTrue(PatternUtils.isDownUpDown(values3, reversals3));
 
         // Stagnant values during upward trend
         uint8[7] memory values4 = [3, 2, 1, 2, 2, 2, 1];
         uint8 reversals4 = PatternUtils.countReversals(values4);
-        assertEq(PatternUtils.getPattern(values4), "\u2193\u2191\u2193");
+        assertEq(PatternUtils.getPattern(values4), "down up down");
         assertTrue(PatternUtils.isDownUpDown(values4, reversals4));
 
         // Stagnant values at peak
         uint8[7] memory values5 = [3, 2, 1, 2, 3, 3, 1];
         uint8 reversals5 = PatternUtils.countReversals(values5);
-        assertEq(PatternUtils.getPattern(values5), "\u2193\u2191\u2193");
+        assertEq(PatternUtils.getPattern(values5), "down up down");
         assertTrue(PatternUtils.isDownUpDown(values5, reversals5));
 
         // Stagnant values in final downward trend
         uint8[7] memory values6 = [3, 2, 1, 2, 3, 1, 1];
         uint8 reversals6 = PatternUtils.countReversals(values6);
-        assertEq(PatternUtils.getPattern(values6), "\u2193\u2191\u2193");
+        assertEq(PatternUtils.getPattern(values6), "down up down");
         assertTrue(PatternUtils.isDownUpDown(values6, reversals6));
 
         // Multiple stagnant regions
         uint8[7] memory values7 = [3, 3, 1, 2, 3, 1, 1];
         uint8 reversals7 = PatternUtils.countReversals(values7);
-        assertEq(PatternUtils.getPattern(values7), "\u2193\u2191\u2193");
+        assertEq(PatternUtils.getPattern(values7), "down up down");
         assertTrue(PatternUtils.isDownUpDown(values7, reversals7));
     }
 
@@ -186,113 +186,113 @@ contract PatternUtilsTest is Test {
         // Base W shape pattern
         uint8[7] memory values = [5, 4, 3, 4, 3, 4, 5];
         uint8 reversals = PatternUtils.countReversals(values);
-        assertEq(PatternUtils.getPattern(values), "\u2193\u2191\u2193\u2191", "Base W shape pattern failed");
-        assertTrue(PatternUtils.isWShape(values, reversals), "Base W shape pattern check failed");
+        assertEq(PatternUtils.getPattern(values), "w shape");
+        assertTrue(PatternUtils.isWShape(values, reversals));
 
         // Stagnant values in first downward trend
         uint8[7] memory values2 = [5, 5, 3, 4, 3, 4, 5];
         uint8 reversals2 = PatternUtils.countReversals(values2);
         // assertEq(reversals2, 3);
-        assertEq(PatternUtils.getPattern(values2), "\u2193\u2191\u2193\u2191", "Stagnant values in first downward trend failed");
+        assertEq(PatternUtils.getPattern(values2), "w shape", "Stagnant values in first downward trend failed");
         assertTrue(PatternUtils.isWShape(values2, reversals2), "Stagnant values in first downward trend check failed");
 
         // // Stagnant values at first valley
         uint8[7] memory values3 = [5, 4, 3, 3, 4, 3, 5];
         uint8 reversals3 = PatternUtils.countReversals(values3);
-        assertEq(PatternUtils.getPattern(values3), "\u2193\u2191\u2193\u2191", "Stagnant values at first valley failed");
-        assertTrue(PatternUtils.isWShape(values3, reversals3), "Stagnant values at first valley check failed");
+        assertEq(PatternUtils.getPattern(values3), "w shape");
+        assertTrue(PatternUtils.isWShape(values3, reversals3));
 
         // // Stagnant values in first upward trend
         uint8[7] memory values4 = [5, 4, 3, 4, 4, 3, 5];
         uint8 reversals4 = PatternUtils.countReversals(values4);
-        assertEq(PatternUtils.getPattern(values4), "\u2193\u2191\u2193\u2191", "Stagnant values in first upward trend failed");
-        assertTrue(PatternUtils.isWShape(values4, reversals4), "Stagnant values in first upward trend check failed");
+        assertEq(PatternUtils.getPattern(values4), "w shape");
+        assertTrue(PatternUtils.isWShape(values4, reversals4));
 
         // Stagnant values at middle peak
         uint8[7] memory values5 = [5, 4, 3, 4, 3, 4, 4];
         uint8 reversals5 = PatternUtils.countReversals(values5);
-        assertEq(PatternUtils.getPattern(values5), "\u2193\u2191\u2193\u2191", "Stagnant values at middle peak failed");
-        assertTrue(PatternUtils.isWShape(values5, reversals5), "Stagnant values at middle peak check failed");
+        assertEq(PatternUtils.getPattern(values5), "w shape");
+        assertTrue(PatternUtils.isWShape(values5, reversals5));
 
         // Stagnant values in second downward trend
         uint8[7] memory values6 = [5, 4, 3, 4, 3, 3, 5];
         uint8 reversals6 = PatternUtils.countReversals(values6);
-        assertEq(PatternUtils.getPattern(values6), "\u2193\u2191\u2193\u2191", "Stagnant values in second downward trend failed");
-        assertTrue(PatternUtils.isWShape(values6, reversals6), "Stagnant values in second downward trend check failed");
+        assertEq(PatternUtils.getPattern(values6), "w shape");
+        assertTrue(PatternUtils.isWShape(values6, reversals6));
 
         // Stagnant values at second valley
         uint8[7] memory values7 = [5, 4, 3, 4, 3, 3, 5];
         uint8 reversals7 = PatternUtils.countReversals(values7);
-        assertEq(PatternUtils.getPattern(values7), "\u2193\u2191\u2193\u2191", "Stagnant values at second valley failed");
-        assertTrue(PatternUtils.isWShape(values7, reversals7), "Stagnant values at second valley check failed");
+        assertEq(PatternUtils.getPattern(values7), "w shape");
+        assertTrue(PatternUtils.isWShape(values7, reversals7));
 
         // Stagnant values in final upward trend
         uint8[7] memory values8 = [5, 4, 3, 4, 3, 4, 4];
         uint8 reversals8 = PatternUtils.countReversals(values8);
-        assertEq(PatternUtils.getPattern(values8), "\u2193\u2191\u2193\u2191", "Stagnant values in final upward trend failed");
-        assertTrue(PatternUtils.isWShape(values8, reversals8), "Stagnant values in final upward trend check failed");
+        assertEq(PatternUtils.getPattern(values8), "w shape");
+        assertTrue(PatternUtils.isWShape(values8, reversals8));
 
         // Multiple stagnant regions
         uint8[7] memory values9 = [5, 5, 3, 4, 3, 3, 5];
         uint8 reversals9 = PatternUtils.countReversals(values9);
-        assertEq(PatternUtils.getPattern(values9), "\u2193\u2191\u2193\u2191", "Multiple stagnant regions failed");
-        assertTrue(PatternUtils.isWShape(values9, reversals9), "Multiple stagnant regions check failed");
+        assertEq(PatternUtils.getPattern(values9), "w shape");
+        assertTrue(PatternUtils.isWShape(values9, reversals9));
     }
 
     function test_MShape() public {
         // Base M shape pattern
         uint8[7] memory values = [1, 2, 3, 2, 3, 2, 1];
         uint8 reversals = PatternUtils.countReversals(values);
-        assertEq(PatternUtils.getPattern(values), "\u2191\u2193\u2191\u2193", "Base M shape pattern failed");
-        assertTrue(PatternUtils.isMShape(values, reversals), "Base M shape pattern check failed");
+        assertEq(PatternUtils.getPattern(values), "m shape");
+        assertTrue(PatternUtils.isMShape(values, reversals));
 
         // Stagnant values in first upward trend
         uint8[7] memory values2 = [1, 1, 3, 2, 3, 2, 1];
         uint8 reversals2 = PatternUtils.countReversals(values2);
-        assertEq(PatternUtils.getPattern(values2), "\u2191\u2193\u2191\u2193", "Stagnant values in first upward trend failed");
-        assertTrue(PatternUtils.isMShape(values2, reversals2), "Stagnant values in first upward trend check failed");
+        assertEq(PatternUtils.getPattern(values2), "m shape");
+        assertTrue(PatternUtils.isMShape(values2, reversals2));
 
         // Stagnant values at first peak
         uint8[7] memory values3 = [1, 2, 3, 3, 2, 3, 1];
         uint8 reversals3 = PatternUtils.countReversals(values3);
-        assertEq(PatternUtils.getPattern(values3), "\u2191\u2193\u2191\u2193", "Stagnant values at first peak failed");
-        assertTrue(PatternUtils.isMShape(values3, reversals3), "Stagnant values at first peak check failed");
+        assertEq(PatternUtils.getPattern(values3), "m shape");
+        assertTrue(PatternUtils.isMShape(values3, reversals3));
 
         // Stagnant values in first downward trend
         uint8[7] memory values4 = [1, 2, 3, 2, 2, 3, 1];
         uint8 reversals4 = PatternUtils.countReversals(values4);
-        assertEq(PatternUtils.getPattern(values4), "\u2191\u2193\u2191\u2193", "Stagnant values in first downward trend failed");
-        assertTrue(PatternUtils.isMShape(values4, reversals4), "Stagnant values in first downward trend check failed");
+        assertEq(PatternUtils.getPattern(values4), "m shape");
+        assertTrue(PatternUtils.isMShape(values4, reversals4));
 
         // Stagnant values at middle valley
         uint8[7] memory values5 = [1, 2, 3, 2, 3, 3, 1];
         uint8 reversals5 = PatternUtils.countReversals(values5);
-        assertEq(PatternUtils.getPattern(values5), "\u2191\u2193\u2191\u2193", "Stagnant values at middle valley failed");
-        assertTrue(PatternUtils.isMShape(values5, reversals5), "Stagnant values at middle valley check failed");
+        assertEq(PatternUtils.getPattern(values5), "m shape");
+        assertTrue(PatternUtils.isMShape(values5, reversals5));
 
         // Stagnant values in second upward trend
         uint8[7] memory values6 = [1, 2, 3, 2, 3, 2, 2];
         uint8 reversals6 = PatternUtils.countReversals(values6);
-        assertEq(PatternUtils.getPattern(values6), "\u2191\u2193\u2191\u2193", "Stagnant values in second upward trend failed");
-        assertTrue(PatternUtils.isMShape(values6, reversals6), "Stagnant values in second upward trend check failed");
+        assertEq(PatternUtils.getPattern(values6), "m shape");
+        assertTrue(PatternUtils.isMShape(values6, reversals6));
 
         // Stagnant values at second peak
         uint8[7] memory values7 = [1, 2, 3, 2, 3, 2, 1];
         uint8 reversals7 = PatternUtils.countReversals(values7);
-        assertEq(PatternUtils.getPattern(values7), "\u2191\u2193\u2191\u2193", "Stagnant values at second peak failed");
-        assertTrue(PatternUtils.isMShape(values7, reversals7), "Stagnant values at second peak check failed");
+        assertEq(PatternUtils.getPattern(values7), "m shape");
+        assertTrue(PatternUtils.isMShape(values7, reversals7));
 
         // Stagnant values in final downward trend
         uint8[7] memory values8 = [1, 2, 3, 2, 3, 2, 1];
         uint8 reversals8 = PatternUtils.countReversals(values8);
-        assertEq(PatternUtils.getPattern(values8), "\u2191\u2193\u2191\u2193", "Stagnant values in final downward trend failed");
-        assertTrue(PatternUtils.isMShape(values8, reversals8), "Stagnant values in final downward trend check failed");
+        assertEq(PatternUtils.getPattern(values8), "m shape");
+        assertTrue(PatternUtils.isMShape(values8, reversals8));
 
         // Multiple stagnant regions
         uint8[7] memory values9 = [1, 1, 3, 2, 3, 2, 1];
         uint8 reversals9 = PatternUtils.countReversals(values9);
-        assertEq(PatternUtils.getPattern(values9), "\u2191\u2193\u2191\u2193", "Multiple stagnant regions failed");
-        assertTrue(PatternUtils.isMShape(values9, reversals9), "Multiple stagnant regions check failed");
+        assertEq(PatternUtils.getPattern(values9), "m shape");
+        assertTrue(PatternUtils.isMShape(values9, reversals9));
     }
 
     function test_Oscillating() public {
@@ -311,10 +311,10 @@ contract PatternUtilsTest is Test {
     function test_CountReversals() public {
         uint8[7] memory values = [1, 2, 1, 2, 1, 2, 1]; // Oscillating pattern
         assertEq(PatternUtils.countReversals(values), 5);
-        
+
         values = [1, 2, 3, 2, 1, 2, 3]; // Up-Down-Up pattern
         assertEq(PatternUtils.countReversals(values), 2);
-        
+
         values = [1, 2, 3, 4, 5, 6, 7]; // Up only pattern
         assertEq(PatternUtils.countReversals(values), 0);
     }

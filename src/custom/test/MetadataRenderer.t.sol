@@ -58,9 +58,9 @@ contract MetadataRendererTest is Test {
         );
 
         // make sure valueGenerator can be set when called by the owner
-        temporaryAddress = address(0x789);
-        metadataRenderer.setValueGenerator(temporaryAddress);
-        assertEq(address(metadataRenderer.valueGenerator()), temporaryAddress, "ValueGenerator address mismatch");
+        address newValueGenerator = address(new ValueGenerator());
+        metadataRenderer.setValueGenerator(newValueGenerator);
+        assertEq(address(metadataRenderer.valueGenerator()), newValueGenerator, "ValueGenerator address mismatch");
 
         // make sure animationUrl can be set when called by the owner
         string memory temporaryUrl = "https://www.test.com";
@@ -72,7 +72,7 @@ contract MetadataRendererTest is Test {
         metadataRenderer.initializeTokenMetadata(1);
 
         // make sure the initializeTokenMetadata works if called by the nft contract
-        for (uint256 i = 1; i <= Constants.LEGENDARY_CHARTS_COUNT + 2; i++) {
+        for (uint256 i = 1; i <= Constants.LEGENDARY_CHARTS_COUNT + 3; i++) {
             vm.prank(nftContract);
             metadataRenderer.initializeTokenMetadata(i);
         }
@@ -81,9 +81,9 @@ contract MetadataRendererTest is Test {
         vm.expectRevert(MetadataRenderer.OnlyNFTContract.selector);
         metadataRenderer.elevate(1, 2);
 
-        // make sure the elevate works if called by the nft contract
+        // Elevate the token
         vm.prank(nftContract);
-        metadataRenderer.elevate(17, 18);
+        metadataRenderer.elevate(Constants.LEGENDARY_CHARTS_COUNT + 1, Constants.LEGENDARY_CHARTS_COUNT + 2);
     }
 
     function test_initializeTokenMetadata() public {
@@ -216,5 +216,21 @@ contract MetadataRendererTest is Test {
         assertEq(palette, Constants.GREYSCALE, "Token palette is not valid for elevation");
         // Make sure the tier is updated
         assertEq(MetadataUtils.calculateTierFromPalette(palette), Constants.ELITE_TIER);
+    }
+
+    function test_initializeLegendaryMetadata() public {
+        // Make sure the token palettes are not set to the correct value
+        for (uint256 i = 1; i <= Constants.LEGENDARY_CHARTS_COUNT; i++) {
+            assertEq(metadataRenderer.tokenPalettes(i), 0);
+        }
+
+        // Initialize the token metadata
+        vm.prank(metadataRenderer.owner());
+        metadataRenderer.initializeLegendaryMetadata();
+
+        // Make sure the token palettes are set to the correct value
+        for (uint256 i = 1; i <= Constants.LEGENDARY_CHARTS_COUNT; i++) {
+            assertEq(metadataRenderer.tokenPalettes(i), Constants.LEGENDARY);
+        }
     }
 }

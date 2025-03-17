@@ -56,10 +56,10 @@ library PatternUtils {
         if (isDownOnly(values)) return "down only";
         if (isPeak(values, reversals)) return "peak";
         if (isValley(values, reversals)) return "valley";
-        if (isUpDownUp(values, reversals)) return "\u2191\u2193\u2191";
-        if (isDownUpDown(values, reversals)) return "\u2193\u2191\u2193";
-        if (isWShape(values, reversals)) return "\u2193\u2191\u2193\u2191";
-        if (isMShape(values, reversals)) return "\u2191\u2193\u2191\u2193";
+        if (isUpDownUp(values, reversals)) return "up down up";
+        if (isDownUpDown(values, reversals)) return "down up down";
+        if (isWShape(values, reversals)) return "w shape";
+        if (isMShape(values, reversals)) return "m shape";
         if (isOscillating(reversals)) return "oscillating";
         return "none";
     }

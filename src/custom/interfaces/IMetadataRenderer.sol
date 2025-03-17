@@ -13,7 +13,18 @@ interface IMetadataRenderer {
     /*              Events            */
     /**********************************/
     event MetadataUpdated(uint256 indexed tokenId);
-    event TokenElevated(uint256 elevateTokenId, uint8 newPalette, uint8 newTier, bytes32 newSeed);
+
+    event TokenElevated(
+        bytes32 indexed seed,
+        uint256 indexed elevateTokenId,
+        uint256 indexed burnTokenId,
+        uint8[7] elevateValues,
+        uint8 elevatePalette,
+        uint8[7] burnValues,
+        uint8 burnPalette,
+        uint8[7] newValues,
+        uint8 newPalette
+    );
 
     /**********************************/
     /*            Functions           */

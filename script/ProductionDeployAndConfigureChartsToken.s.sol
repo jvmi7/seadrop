@@ -22,10 +22,10 @@ contract ProductionDeployAndConfigureChartsToken is Script {
     address creator = 0x49A177C521B8b0710330392b862293716E2237B9;
     address feeRecipient = 0x0000a26b00c1F0DF003000390027140000fAa719;
     // TODO: change to the actual chainlink forwarder address
-    address chainlinkForwarder = 0x586E12fa9369D1496870E16933C35a8Ba1292007;
+    address chainlinkForwarder = 0xfEBE7705918E7a214B64082a1df69AEe11B2C6C6;
 
     // Token config
-    uint256 maxSupply = 200_000_000;
+    uint256 maxSupply = 10_000;
 
     // // Drop config
     // uint16 feeBps = 500; // 5%
@@ -55,7 +55,7 @@ contract ProductionDeployAndConfigureChartsToken is Script {
         allowedSeadrop[0] = seadrop;
 
         // Deploy NFT contract
-        token = new ChartsERC721SeaDrop("sakldfjaskldfjasd", "XXXXXX", allowedSeadrop);
+        token = new ChartsERC721SeaDrop("dfalsjdflkasdf", "XXDSD", allowedSeadrop);
 
         // Deploy MetadataBadges
         metadataBadges = new MetadataBadges();
@@ -101,10 +101,10 @@ contract ProductionDeployAndConfigureChartsToken is Script {
 
         ISeaDrop(seadrop).mintPublic{ value: 0 }(address(token), feeRecipient, address(0), numLegendary);
 
-        // mint extra tokens for testing in batches
-        for (uint256 i = 0; i < 5; i++) {
-            ISeaDrop(seadrop).mintPublic{ value: 0 }(address(token), feeRecipient, address(0), 50);
-        }
+        // // mint extra tokens for testing in batches
+        // for (uint256 i = 0; i < 5; i++) {
+        //     ISeaDrop(seadrop).mintPublic{ value: 0 }(address(token), feeRecipient, address(0), 50);
+        // }
 
         // Print all deployed contract addresses
         console.log("=== Deployed Contract Addresses ===");

@@ -40,7 +40,7 @@ library Constants {
     // NFT metadata constants
     // @notice Default description for new NFTs
     string internal constant DESCRIPTION =
-        "charts by jvmi charts by jvmicharts by jvmi charts by jvmicharts by jvmi charts by jvmi charts by jvmi charts by jvmi charts by jvmi";
+        "welcome to charts, an interactive art experience challenging how we value price in the NFT space. the collection builds on the swatches by jvmi aesthetic, featuring vibrant colors and aesthetic shapes to introduce a new value system based on charts. alongside the interactive canvas, collectors can burn to create new charts of increasing rarity to elevate their collection.";
     string internal constant ANIMATION_URL = "https://charts-by-jvmi-jet.vercel.app";
     uint8 constant LEGENDARY_CHARTS_COUNT = 16;
 }

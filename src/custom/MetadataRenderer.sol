@@ -164,6 +164,16 @@ contract MetadataRenderer is IMetadataRenderer, Ownable {
     }
 
     /**
+     * @notice Initializes the metadata for the legendary charts
+     * @dev Only callable by the contract owner
+     */
+    function initializeLegendaryMetadata() external onlyOwner {
+        for (uint256 i = 1; i <= Constants.LEGENDARY_CHARTS_COUNT; i++) {
+            tokenPalettes[i] = Constants.LEGENDARY;
+        }
+    }
+
+    /**
      * @notice Elevates a token by burning another token and setting the palette to the next tier
      * @param elevateTokenId The ID of the token to elevate
      * @param burnTokenId The ID of the token to burn
@@ -175,6 +185,8 @@ contract MetadataRenderer is IMetadataRenderer, Ownable {
         uint8 burnPalette = tokenPalettes[burnTokenId];
         uint8 elevateTier = MetadataUtils.calculateTierFromPalette(elevatePalette);
         uint8 burnTier = MetadataUtils.calculateTierFromPalette(burnPalette);
+        uint8[VALUES_ARRAY_SIZE] memory elevateValues = _getValues(elevateTokenId);
+        uint8[VALUES_ARRAY_SIZE] memory burnValues = _getValues(burnTokenId);
 
         // Must be the same tier
         if (elevateTier != burnTier) revert InvalidElevation(elevateTokenId, burnTokenId);
@@ -198,8 +210,20 @@ contract MetadataRenderer is IMetadataRenderer, Ownable {
         // Update global seed
         globalSeed = Utils.generateNextSeed(globalSeed, elevateTokenId);
 
+        uint8[VALUES_ARRAY_SIZE] memory newValues = _getValues(elevateTokenId);
+
         // Emit the event
-        emit TokenElevated(elevateTokenId, newPalette, newTier, tokenSeeds[elevateTokenId]);
+        emit TokenElevated(
+            tokenSeeds[elevateTokenId],
+            elevateTokenId,
+            burnTokenId,
+            elevateValues,
+            elevatePalette,
+            burnValues,
+            burnPalette,
+            newValues,
+            newPalette
+        );
     }
 
     /*************************************/

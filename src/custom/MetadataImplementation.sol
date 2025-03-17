@@ -173,7 +173,7 @@ contract MetadataImplementation is Ownable {
                     traits,
                     string(
                         abi.encodePacked(
-                            ',{"trait_type":"value","value":',
+                            ',{"trait_type":"price","value":',
                             uint256(metadata.values.getLastNonZeroValue()).toString(),
                             "}"
                         )

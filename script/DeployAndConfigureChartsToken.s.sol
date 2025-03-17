@@ -28,7 +28,7 @@ contract DeployAndConfigureChartsToken is Script {
     // Drop config
     uint16 feeBps = 500; // 5%
     uint80 mintPrice = 0.0000 ether;
-    uint16 maxTotalMintableByWallet = 50_000;
+    uint16 maxTotalMintableByWallet = 24;
 
     ChartsERC721SeaDrop token;
     ValueGenerator valueGenerator;
